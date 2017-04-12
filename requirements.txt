@@ -1,0 +1,4 @@
+#Pi 3 explorer Radar
+requests
+pybluez[ble]
+pyserial
