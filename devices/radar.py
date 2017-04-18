@@ -2,6 +2,9 @@ import logging
 from core import Hunter_RSSI
 import serial
 import io
+import subprocess
+import shlex
+import explorerhat as eh
 """
 Radar style ghost hunting device
 Sweeps the are in 360 degrees for clues
@@ -26,8 +29,10 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
     serial_address = '/dev/ttyACM0'
     serial = None
     sio = None
+    iwargs = shlex.split('iwlist wlan0 scanning')
+    egrepargs = shlex.spli("egrep 'Cell |ESSID|Quality'")
 
-    # Clue detected.  Do something
+    # Clue detected.  Pass back
     def detected(self, hunt_response):
         pass
 
@@ -35,7 +40,12 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
     def notdetected(self):
         pass
 
+    # Uses iwlist parsed with egrep to get nearby access points
+    # Note: Requires sudo!
     def get_wifi(self):
+        p1 = subprocess.Popen(self.iwargs, stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(
+            self.egrepargs, stdin=p1.stdout, stdout=subprocess.PIPE)
         pass
 
     def get_BLE(self):
