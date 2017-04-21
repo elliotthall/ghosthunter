@@ -1,5 +1,12 @@
 import logging
 import requests
+import subprocess
+import shlex
+import re
+from bluepy.btle import Scanner
+import timer
+import threading
+
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
 # This is the base object from which all hunter devices should be derived.
@@ -16,19 +23,28 @@ class HunterBase(object):
 
     # Properties of hunt this hunter is attached to
     hunt_context = None
-    # Interval between detection passes (in milliseconds)
-    detection_interval = 0
+    # How long the device rests before ready to detect again (in seconds)
+    device_interval = 0
     # Range of detection
     detection_range = 0
     # Angle of detection
     detection_angle = 360
-    # Navigation profile
+    # Device is ready to scan
+    device_ready = False
 
     options = {}
 
     def __init__(self, hunt_context):
         super(HunterBase, self).__init__()
         self.hunt_context = hunt_context
+
+    # Activate the device
+    # Overwrite this with your object's bootup
+    # but remember to toggle ready and broadcast
+    def bootup(self):
+        # Do some setup stuff here
+        self.device_ready = True
+        self.send_device_ready()
 
     # Begin a detection sweep.
     def init_detection(self):
@@ -37,7 +53,7 @@ class HunterBase(object):
         hunt_response = self.broadcast_position().json()
         self.parse_response(hunt_response)
         # Finish  detection
-        self.end_detection(hunt_response)
+        self.reset_device(hunt_response)
 
     def parse_response(self, hunt_response):
         detected = hunt_response.get('detected')
@@ -49,6 +65,14 @@ class HunterBase(object):
     # Detection sweep finished, cleanup
     def end_detection(self, hunt_response):
         logging.debug(self.uid+": end detection sweep")
+
+    def reset_device(self, hunt_response):
+        self.end_detection(hunt_response)
+        # Start timer for device ready flag
+        device_ready = threading.Timer(
+            self.device_interval, self.set_device_ready)
+        device_ready.setName('device_ready_timer')
+        device_ready.start()
 
     # Send the device's position and properties
     # to hunt server via REST
@@ -93,9 +117,12 @@ class HunterBase(object):
     def getposition(self):
         pass
 
+    # Device is ready to scan again
+    def set_device_ready(self):
+        self.device_ready = True
+
+
 # Subclass of hunter that uses wifi and/or BLE for positioning
-
-
 class Hunter_RSSI(HunterBase):
     navigator_name = 'RSSI'
     # Use wifi
@@ -103,17 +130,91 @@ class Hunter_RSSI(HunterBase):
     # Use BLE
     BLE = True
 
+    # Bluetooh options
+    # Length of time to scan
+    ble_scan_length = 5.0
+    ble_name_prefix = "GHunt"
+    ble_fingerprints = {}
+
+    # Wifi variables
+    # commands for getting/parsing wifi report
+    iwargs = shlex.split('iwlist wlan0 scanning')
+    egrepargs = shlex.spli("egrep 'Cell |ESSID|Quality'")
+
     def __init__(self, hunt_context, wifi=True, BLE=True):
         super(Hunter_RSSI, self).__init__()
         self.hunt_context = hunt_context
         self.wifi = wifi
         self.BLE = BLE
 
-    def get_wifi(self):
-        pass
+    # Activate the device
+    def bootup(self):
+        # Begin scanning thread
+        if self.BLE:
+            # todo kwargs instead?
+            d = threading.Thread(name='ble_thread', target=self.ble_thread)
+            d.setDaemon(True)
+            d.start()
 
+        self.set_device_ready()
+
+    # Uses iwlist parsed with egrep to get nearby access points
+    # Note: Requires sudo!
+    def get_wifi(self):
+        iwprocess = subprocess.Popen(self.iwargs, stdout=subprocess.PIPE)
+        egrepprocess = subprocess.Popen(
+            self.egrepargs, stdin=iwprocess.stdout, stdout=subprocess.PIPE)
+        wifi_report = egrepprocess.communicate()
+        wifi = list()
+        point = None
+        for line in wifi_report.split('\n'):
+            if 'Cell' in line:
+                # New access point
+                # Example: Cell 03 - Address: 00:8A:AE:DB:B6:E6
+                if point is not None:
+                    wifi.append(point)
+                point = {}
+                m = re.search('Address\: (.*)$', line)
+                if m is not None:
+                    point['Address'] = m.group(1)
+            elif 'ESSID' in line:
+                # ESSID:"SKY15622"\n
+                m = re.search('ESSID\:\s*\"(.*)\"', line)
+                if m is not None:
+                    point['ESSID'] = m.group(1)
+            elif 'Signal' in line:
+                # Quality=36/70  Signal level=-74 dBm
+                # todo Quality as well?
+                m = re.search('Signal level\=\s*(.*) dBm', line)
+                if m is not None:
+                    point['RSSI'] = m.group(1)
+
+    # Return the last scan results
     def get_BLE(self):
-        pass
+        return self.ble_fingerprints
+
+    def ble_thread(self):
+        while True:
+            self.ble_scan()
+            timer.sleep(5)
+
+    # Uses bluepy https://github.com/IanHarvey/bluepy
+    # Scan for bluetooth devices, filter by prefix
+    # to only get relevant beacons, return mac & RSSI
+    def ble_scan(self):
+        scanner = Scanner()
+        devices = scanner.scan(self.ble_scan_length)
+        # Clear the last scan
+        self.ble_fingerprints = {}
+        for dev in devices:
+            # Get name
+            for (adtype, desc, value) in dev.getScanData():
+                if "Local Name" in desc:
+                    name = value
+                # Does name prefix exist in local name?
+                if (name is not None and self.ble_name_prefix in name):
+                    self.ble_fingerprints[dev.addr] = {
+                        "Name": name, "RSSI": dev.rssi}
 
     # Return wifi and/or BLE signal information
     def getposition(self):

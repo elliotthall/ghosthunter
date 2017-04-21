@@ -1,4 +1,6 @@
 #Pi 3 explorer Radar
 requests
-pybluez[ble]
+
+#bluepy
+git+https://github.com/IanHarvey/bluepy.git
 pyserial

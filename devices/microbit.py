@@ -164,7 +164,7 @@ class RadarMicrobit():
         ))
 
     def parse_pi_message(self, pi_message):
-        if 'detection_ready' in pi_message:
+        if 'device_ready' in pi_message:
             self.detection_ready = True
         if 'detected=0' in pi_message:
             # no detection
