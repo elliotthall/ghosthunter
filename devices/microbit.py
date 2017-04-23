@@ -160,15 +160,15 @@ class RadarMicrobit():
 
         sensor_string += (",acc_x={}"
                           ",acc_y={}"
-                          ",acc_z={}"                          
+                          ",acc_z={}"
                           .format(
                               microbit.accelerometer.get_x(),
                               microbit.accelerometer.get_y(),
-                              microbit.accelerometer.get_z()                              
+                              microbit.accelerometer.get_z()
                           ))
         if (len(microbit.accelerometer.current_gesture()) > 0):
             sensor_string += (",acc_g={}".format(
-              microbit.accelerometer.current_gesture()))
+                microbit.accelerometer.current_gesture()))
         sensor_string += "\n"
         microbit.uart.write(sensor_string)
 
@@ -185,8 +185,7 @@ class RadarMicrobit():
             self.detected(pi_message)
         if 'init_detection' in pi_message:
             # Tell the Microbit to begin detection
-            self.initdetectionanimation()
-        microbit.sleep(1000)
+            self.initdetectionanimation()       
         microbit.display.clear()
 
     def send_begin_detection(self):
