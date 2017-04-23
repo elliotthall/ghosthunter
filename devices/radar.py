@@ -24,17 +24,28 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
     detection_range = 50
     # Angle of detection
     detection_angle = 360
+    # Default for Pis
     serial_address = '/dev/ttyACM0'
     serial = None
     sio = None
 
     # Clue detected.  Pass back
     def detected(self, hunt_response):
-        pass
+        if self.serial is None:
+            self.init_serial()
+        detected_string = 'detected=1'
+        if hunt_response['clue_heading']:
+            detected_string += ',clue_heading='+hunt_response['clue_heading']
+        if hunt_response['clue_distance']:
+            detected_string += ',clue_distance='+hunt_response['clue_distance']
+        detected_string += '\n'
+        self.serial.write(detected_string)
 
     # Nothing Found
-    def notdetected(self):
-        pass
+    def notdetected(self, hunt_response):
+        if self.serial is None:
+            self.init_serial()
+        self.serial.write('detected=0\n')
 
     # Read the sensor data from the microbit over the serial connection
     def get_microbit_sensor_data(self):
@@ -42,22 +53,22 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
         if self.serial is None:
             self.init_serial()
         if self.serial is not None:
-            data_line = self.sio.readline()
+            self.serial.write('request_sensor_data=1\n')
+            data_line = self.serial.readline()
             if len(data_line) > 0:
                 data = dict(x.split('=') for x in data_line.split(','))
             else:
                 print("No Microbit data returned")
-            return data
+        return data
 
     def set_device_ready(self):
         self.device_ready = True
         if self.serial is None:
             self.init_serial()
-        self.sio.write('device_ready=1\n')
+        self.serial.write('device_ready=1\n')
 
     def init_serial(self):
-        self.serial = serial.Serial(self.serial_address, 115200, timeout=1)
-        self.sio = io.TextIOWrapper(io.BufferedRWPair(serial, serial))
+        self.serial = serial.Serial(self.serial_address, 115200, timeout=3)
 
     def getposition(self):
         position = super(PiMicroRadarCartesian_RSSI, self).getPosition()

@@ -4,7 +4,7 @@ import subprocess
 import shlex
 import re
 from bluepy.btle import Scanner
-import timer
+import time
 import threading
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -132,17 +132,20 @@ class Hunter_RSSI(HunterBase):
 
     # Bluetooh options
     # Length of time to scan
-    ble_scan_length = 5.0
+    ble_scan_length = 3.0
+    # Sleep intervals between scans
+    ble_scan_rest = 2.0
     ble_name_prefix = "GHunt"
     ble_fingerprints = {}
+    stopevent = None
 
     # Wifi variables
     # commands for getting/parsing wifi report
     iwargs = shlex.split('iwlist wlan0 scanning')
-    egrepargs = shlex.spli("egrep 'Cell |ESSID|Quality'")
+    egrepargs = shlex.split("egrep 'Cell |ESSID|Quality'")
 
     def __init__(self, hunt_context, wifi=True, BLE=True):
-        super(Hunter_RSSI, self).__init__()
+        super(Hunter_RSSI, self).__init__(hunt_context)
         self.hunt_context = hunt_context
         self.wifi = wifi
         self.BLE = BLE
@@ -151,12 +154,19 @@ class Hunter_RSSI(HunterBase):
     def bootup(self):
         # Begin scanning thread
         if self.BLE:
-            # todo kwargs instead?
-            d = threading.Thread(name='ble_thread', target=self.ble_thread)
-            d.setDaemon(True)
+            self.stopevent = threading.Event()
+            d = threading.Thread(name='ble_thread',
+                                 target=self.ble_thread, args=(self.stopevent))
+            # d.setDaemon(True)
             d.start()
 
         self.set_device_ready()
+
+    # Teardown
+    def shutdown(self):
+        if self.BLE:
+            if self.stopevent:
+                self.stopevent.set()
 
     # Uses iwlist parsed with egrep to get nearby access points
     # Note: Requires sudo!
@@ -166,37 +176,40 @@ class Hunter_RSSI(HunterBase):
             self.egrepargs, stdin=iwprocess.stdout, stdout=subprocess.PIPE)
         wifi_report = egrepprocess.communicate()
         wifi = list()
-        point = None
-        for line in wifi_report.split('\n'):
-            if 'Cell' in line:
-                # New access point
-                # Example: Cell 03 - Address: 00:8A:AE:DB:B6:E6
+        for access_point in wifi_report:
+            point = None
+            if access_point is not None:
+                for line in access_point.split('\n'):
+                    if 'Cell' in line:
+                        # New access point
+                        # Example: Cell 03 - Address: 00:8A:AE:DB:B6:E6
+                        point = {}
+                        m = re.search('Address\: (.*)$', line)
+                        if m is not None:
+                            point['Address'] = m.group(1)
+                    elif 'ESSID' in line:
+                        # ESSID:"SKY15622"\n
+                        m = re.search('ESSID\:\s*\"(.*)\"', line)
+                        if m is not None:
+                            point['ESSID'] = m.group(1)
+                    elif 'Signal' in line:
+                        # Quality=36/70  Signal level=-74 dBm
+                        # todo Quality as well?
+                        m = re.search('Signal level\=\s*(.*) dBm', line)
+                        if m is not None:
+                            point['RSSI'] = m.group(1)
                 if point is not None:
                     wifi.append(point)
-                point = {}
-                m = re.search('Address\: (.*)$', line)
-                if m is not None:
-                    point['Address'] = m.group(1)
-            elif 'ESSID' in line:
-                # ESSID:"SKY15622"\n
-                m = re.search('ESSID\:\s*\"(.*)\"', line)
-                if m is not None:
-                    point['ESSID'] = m.group(1)
-            elif 'Signal' in line:
-                # Quality=36/70  Signal level=-74 dBm
-                # todo Quality as well?
-                m = re.search('Signal level\=\s*(.*) dBm', line)
-                if m is not None:
-                    point['RSSI'] = m.group(1)
+        return wifi
 
     # Return the last scan results
-    def get_BLE(self):
+    def get_ble(self):
         return self.ble_fingerprints
 
-    def ble_thread(self):
-        while True:
+    def ble_thread(self, stopevent):
+        while not stopevent.isSet():
             self.ble_scan()
-            timer.sleep(5)
+            time.sleep(self.ble_scan_rest)
 
     # Uses bluepy https://github.com/IanHarvey/bluepy
     # Scan for bluetooth devices, filter by prefix
@@ -211,10 +224,11 @@ class Hunter_RSSI(HunterBase):
             for (adtype, desc, value) in dev.getScanData():
                 if "Local Name" in desc:
                     name = value
-                # Does name prefix exist in local name?
-                if (name is not None and self.ble_name_prefix in name):
-                    self.ble_fingerprints[dev.addr] = {
-                        "Name": name, "RSSI": dev.rssi}
+                    # Does name prefix exist in local name?
+                    if (name is not None and self.ble_name_prefix in name):
+                        self.ble_fingerprints[dev.addr] = {
+                            "Name": name, "RSSI": dev.rssi}
+                    break
 
     # Return wifi and/or BLE signal information
     def getposition(self):

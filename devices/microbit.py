@@ -153,17 +153,28 @@ class RadarMicrobit():
             heading = microbit.compass.heading()
         else:
             heading = -1
-        # todo may add accelerometer
         # microbit.accelerometer.get_values()
-        print("button_a={0},button_b={1},heading={2},\
-        accelerometer=[{3},{4},{5},{6}]\n".format(
-            a, b, heading,
-            microbit.accelerometer.get_x(), microbit.accelerometer.get_y(),
-            microbit.accelerometer.get_z(),
-            microbit.accelerometer.current_gesture()
-        ))
+        sensor_string = ("b_a={0},b_b={1},heading={2}"
+                         .format(a, b, heading))
+        # accelerometer for possible future use
+
+        sensor_string += (",acc_x={}"
+                          ",acc_y={}"
+                          ",acc_z={}"                          
+                          .format(
+                              microbit.accelerometer.get_x(),
+                              microbit.accelerometer.get_y(),
+                              microbit.accelerometer.get_z()                              
+                          ))
+        if (len(microbit.accelerometer.current_gesture()) > 0):
+            sensor_string += (",acc_g={}".format(
+              microbit.accelerometer.current_gesture()))
+        sensor_string += "\n"
+        microbit.uart.write(sensor_string)
 
     def parse_pi_message(self, pi_message):
+        if 'request_sensor_data' in pi_message:
+            self.send_sensor_data()
         if 'device_ready' in pi_message:
             self.detection_ready = True
         if 'detected=0' in pi_message:
@@ -182,7 +193,6 @@ class RadarMicrobit():
         microbit.uart.write('begin_detection=1')
 
     def device_listen(self):
-        self.send_sensor_data()
         if microbit.uart.any():
             pi_message = microbit.uart.readline()
             self.parse_pi_message(pi_message)
@@ -192,7 +202,7 @@ class RadarMicrobit():
                 self.initdetectionanimation()
                 self.send_begin_detection()
         if microbit.button_b.is_pressed():
-                microbit.compass.calibrate()
+            microbit.compass.calibrate()
 
 
 radar = RadarMicrobit()
@@ -200,10 +210,14 @@ radar.detection_ready = True
 demo_headings = [3, 90, 180, 270]
 demo_distances = [0, 1, 2]
 
-for heading in demo_headings:
-    for distance in demo_distances:
-        radar.detected({'clue_heading': heading, 'clue_distance': distance})
-        microbit.sleep(1000)
+
+def display_test():
+    for heading in demo_headings:
+        for distance in demo_distances:
+            radar.detected(
+                {'clue_heading': heading, 'clue_distance': distance})
+            microbit.sleep(500)
+
 
 while True:
     radar.device_listen()
