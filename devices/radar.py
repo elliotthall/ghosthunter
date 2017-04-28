@@ -34,12 +34,17 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
         if self.serial is None:
             self.init_serial()
         detected_string = 'detected=1'
-        if hunt_response['clue_heading']:
-            detected_string += ',clue_heading='+hunt_response['clue_heading']
-        if hunt_response['clue_distance']:
-            detected_string += ',clue_distance='+hunt_response['clue_distance']
-        detected_string += '\n'
-        self.serial.write(detected_string)
+        try:
+            if hunt_response.get('clue_heading'):
+                detected_string += ',clue_heading='
+                +hunt_response['clue_heading']
+            if hunt_response.get('clue_distance'):
+                detected_string += ',clue_distance='
+                +hunt_response['clue_distance']
+            detected_string += '\n'
+            self.serial.write(detected_string)
+        except KeyError:
+            logging.error('Bad Microbit input {}'.format(hunt_response))
 
     # Nothing Found
     def notdetected(self, hunt_response):
@@ -52,13 +57,16 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
         data = {}
         if self.serial is None:
             self.init_serial()
-        if self.serial is not None:
+        if self.serial is not None:            
             self.serial.write('request_sensor_data=1\n')
             data_line = self.serial.readline()
-            if len(data_line) > 0:
-                data = dict(x.split('=') for x in data_line.split(','))
-            else:
-                print("No Microbit data returned")
+            try:
+                if len(data_line) > 0:
+                    data = dict(x.split('=') for x in data_line.split(','))
+                else:
+                    print("No Microbit data returned")
+            except ValueError:
+                print "Bad data from microbit {}".format(data_line)
         return data
 
     def set_device_ready(self):
