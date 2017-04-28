@@ -1,102 +1,7 @@
 import microbit
-
-ping1 = microbit.Image("00000:"
-                       "00000:"
-                       "00300:"
-                       "00000:"
-                       "00000")
-
-ping2 = microbit.Image("00000:"
-                       "07770:"
-                       "07070:"
-                       "07770:"
-                       "00000")
-
-ping3 = microbit.Image("99999:"
-                       "90009:"
-                       "90009:"
-                       "90009:"
-                       "99999")
-
-foundN1 = microbit.Image("00000:"
-                         "00500:"
-                         "00300:"
-                         "00000:"
-                         "00000")
-
-foundN2 = microbit.Image("00000:"
-                         "07770:"
-                         "00300:"
-                         "00000:"
-                         "00000")
-
-foundN3 = microbit.Image("99999:"
-                         "09990:"
-                         "00900:"
-                         "00000:"
-                         "00000")
-
-foundE1 = microbit.Image("00000:"
-                         "00000:"
-                         "00350:"
-                         "00000:"
-                         "00000")
-
-foundE2 = microbit.Image("00000:"
-                         "00070:"
-                         "00770:"
-                         "00070:"
-                         "00000")
-
-foundE3 = microbit.Image("00009:"
-                         "00099:"
-                         "00999:"
-                         "00099:"
-                         "00009")
-
-foundS1 = microbit.Image("00000:"
-                         "00000:"
-                         "00300:"
-                         "00500:"
-                         "00000")
-
-foundS2 = microbit.Image("00000:"
-                         "00000:"
-                         "00300:"
-                         "07770:"
-                         "00000")
-
-foundS3 = microbit.Image("00000:"
-                         "00000:"
-                         "00900:"
-                         "09990:"
-                         "99999")
-
-foundW1 = microbit.Image("00000:"
-                         "00000:"
-                         "05300:"
-                         "00000:"
-                         "00000")
-
-foundW2 = microbit.Image("00000:"
-                         "07000:"
-                         "07700:"
-                         "07000:"
-                         "00000")
-
-foundW3 = microbit.Image("90000:"
-                         "99000:"
-                         "99900:"
-                         "99000:"
-                         "90000")
-
-foundN = [foundN1, foundN2, foundN3]
-foundE = [foundE1, foundE2, foundE3]
-foundS = [foundS1, foundS2, foundS3]
-foundW = [foundW1, foundW2, foundW3]
-
-pingimage = [ping1, ping2, ping3]
-
+# Ghost Radar for the Micro:bit verion 0.5
+# todo add readthedocs link
+# Elliott Hall
 
 class RadarMicrobit():
 
@@ -109,44 +14,83 @@ class RadarMicrobit():
             microbit.uart.init(115200)
 
     def initdetectionanimation(self):
-        microbit.display.show(pingimage, loop=False, delay=200)
         microbit.display.clear()
+        ping = [microbit.Image("00000:00000:00300:00000:00000"),
+                microbit.Image("00000:07770:07070:07770:00000"),
+                microbit.Image("99999:90009:90009:90009:99999")]
+        microbit.display.show(ping, loop=False, delay=200)
+        microbit.display.clear()
+
+    def showready(self):
+        microbit.display.set_pixel(2, 2, 9)
+
+    def showblip(self, images, distance):
+        microbit.display.clear()
+        for x in range(distance):
+            microbit.display.show(microbit.Image(images[x]))
+            microbit.sleep(500)
+            microbit.display.clear()
+        microbit.sleep(2000)
 
     def compass_display(self, heading, distance):
         if heading < 45 or heading > 315:
             # North
-            microbit.display.show(foundN[distance])
+            foundN = ["00000:00500:00300:00000:00000",
+                      "00000:07770:00300:00000:00000",
+                      "99999:09990:00900:00000:00000"]
+            self.showblip(foundN, distance)
         elif heading > 45 and heading < 135:
             # East
-            microbit.display.show(foundE[distance])
+            foundE = ["00000:00000:00350:00000:00000",
+                      "00000:00070:00770:00070:00000",
+                      "00009:00099:00999:00099:00009"]
+
+            self.showblip(foundE, distance)
         elif heading > 135 and heading < 235:
             # South
-            microbit.display.show(foundS[distance])
+            foundS = [
+                "00000:00000:00300:00500:00000",
+                "00000:00000:00300:07770:00000",
+                "00000:00000:00900:09990:99999"
+            ]
+            self.showblip(foundS, distance)
         elif heading > 235 and heading < 315:
             # West
-            microbit.display.show(foundW[distance])
+            foundW = [
+                "00000:00000:05300:00000:00000",
+                "00000:07000:07700:07000:00000",
+                "90000:99000:99900:99000:90000"
+            ]
+            self.showblip(foundW, distance)
 
-    def not_detected(self, hunt_response):
-        no_hits = microbit.Image(width=5, height=5)
-        no_hits.set_pixel(5, 5, 1)
-
-    def detected(self, hunt_response):
-        # print("Detected!")
-        # Clue heading
-        if hunt_response.get('clue_heading'):
-            clue_heading = hunt_response.get('clue_heading')
-            self.compass_display(int(clue_heading),
-                                 int(hunt_response.get('clue_distance')))
-            microbit.sleep(1000)
-        if hunt_response.get('ghost_heading'):
-            microbit.display.show(microbit.Image.GHOST)
-            microbit.sleep(1000)
-            self.compass_display(int(hunt_response.get('clue_heading')),
-                                 int(hunt_response.get('clue_distance')))
+    def not_detected(self, pi_message):
+        microbit.display.show(microbit.Image.NO)
+        microbit.sleep(2000)
         microbit.display.clear()
 
-    # Pass all sensor data over the serial connection
+    def detected(self, pi_message):
+        # Clue heading
+        clue_heading = 0
+        clue_distance = 0
+        for response in pi_message.split(','):
+            if 'clue_heading' in response:
+                print(response)
+                clue_heading = int(response.split('=')[1])
+            if 'clue_distance' in response:
+                clue_distance = int(response.split('=')[1])
+        if clue_distance > 0 and clue_heading > 0:
+            self.compass_display(clue_heading, clue_distance)
+        else:
+            microbit.uart.write(
+                'ERROR: Bad detection data {}\n'.format(pi_message))
+        # if hunt_response.get('ghost_heading'):
+        #     microbit.display.show(microbit.Image.GHOST)
+        #     microbit.sleep(1000)
+        #     self.compass_display(int(hunt_response.get('clue_heading')),
+        #                          int(hunt_response.get('clue_distance')))
+        # microbit.display.clear()
 
+    # Pass all sensor data over the serial connection
     def send_sensor_data(self):
         a, b = microbit.button_a.was_pressed(), microbit.button_b.was_pressed()
         if microbit.compass.is_calibrated():
@@ -157,7 +101,6 @@ class RadarMicrobit():
         sensor_string = ("b_a={0},b_b={1},heading={2}"
                          .format(a, b, heading))
         # accelerometer for possible future use
-
         sensor_string += (",acc_x={}"
                           ",acc_y={}"
                           ",acc_z={}"
@@ -173,28 +116,34 @@ class RadarMicrobit():
         microbit.uart.write(sensor_string)
 
     def parse_pi_message(self, pi_message):
-        if 'request_sensor_data' in pi_message:
-            self.send_sensor_data()
-        if 'device_ready' in pi_message:
-            self.detection_ready = True
-        if 'detected=0' in pi_message:
-            # no detection
-            self.not_detected(pi_message)
-        elif 'detected=1' in pi_message:
-            # Clue found, run detection animation
-            self.detected(pi_message)
-        if 'init_detection' in pi_message:
-            # Tell the Microbit to begin detection
-            self.initdetectionanimation()       
-        microbit.display.clear()
+        # Decode to string
+        try:
+            if 'request_sensor_data' in pi_message:
+                self.send_sensor_data()
+            elif 'device_ready' in pi_message:
+                self.detection_ready = True
+                self.showready()
+            elif 'detected=0' in pi_message:
+                # no detection
+                self.not_detected(pi_message)
+            elif 'detected=1' in pi_message:
+                # Clue found, run detection animation
+                self.detected(pi_message)
+            elif 'init_detection' in pi_message:
+                # Tell the Microbit to begin detection
+                self.initdetectionanimation()
+        except ValueError as ve:
+            microbit.display.scroll(str(ve))
 
     def send_begin_detection(self):
-        microbit.uart.write('begin_detection=1')
+        microbit.uart.write('begin_detection=1\n')
 
     def device_listen(self):
         if microbit.uart.any():
-            pi_message = microbit.uart.readline()
+            pi_message = str(microbit.uart.readall()).replace(
+                '\\n', '').replace('\'', '')
             self.parse_pi_message(pi_message)
+
         if microbit.button_a.is_pressed():
             if self.detection_ready:
                 self.detection_ready = False
@@ -205,19 +154,8 @@ class RadarMicrobit():
 
 
 radar = RadarMicrobit()
-radar.detection_ready = True
-demo_headings = [3, 90, 180, 270]
-demo_distances = [0, 1, 2]
 
-
-def display_test():
-    for heading in demo_headings:
-        for distance in demo_distances:
-            radar.detected(
-                {'clue_heading': heading, 'clue_distance': distance})
-            microbit.sleep(500)
-
-
+microbit.uart.write("READY\n")
 while True:
     radar.device_listen()
     microbit.sleep(100)
