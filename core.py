@@ -156,7 +156,7 @@ class Hunter_RSSI(HunterBase):
         if self.BLE:
             self.stopevent = threading.Event()
             d = threading.Thread(name='ble_thread',
-                                 target=self.ble_thread, args=(self.stopevent))
+                                 target=self.ble_thread, args=(self.stopevent,))
             # d.setDaemon(True)
             d.start()
 
