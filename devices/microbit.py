@@ -3,6 +3,7 @@ import microbit
 # todo add readthedocs link
 # Elliott Hall
 
+
 class RadarMicrobit():
 
     # Whether the device is ready to begin detection

@@ -1,6 +1,7 @@
 from devices.radar import PiMicroRadarCartesian_RSSI
 import time
 # Diagnostic/ demo for the pimicro radar
+
 device = None
 
 
@@ -61,6 +62,33 @@ def test_sweep(device):
             begin = True
             device.init_detection()
 
+"""
+RSSI = TxPower - 10 * n * lg(d)
+n = 2 (in free space)
+d = 10 ^ ((TxPower - RSSI) / (10 * n))
+
+"""
+
+def ble_demo(device):
+    # todo wait for microbit
+    # todo if A look for BLE
+    ble_report = device.get_ble()
+    if ble_report.keys():
+        # get first rssi
+        rssi = float(ble_report[0]["RSSI"])
+        # translate rssi into clue_distance
+        if rssi < 0.3:
+            clue_distance =1
+        elif rssi < 0.6:
+            clue_distance = 2
+        else:
+            clue_distance = 3
+        # send to microbit, currently always North
+        device.serial.write('detected=1,clue_heading=3,clue_distance={}\n'.format(clue_distance))
+
+
+
+    pass
 
 if __name__ == '__main__':
     try:

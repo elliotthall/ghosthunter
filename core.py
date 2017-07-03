@@ -6,6 +6,7 @@ import re
 from bluepy.btle import Scanner
 import time
 import threading
+import websockets
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'

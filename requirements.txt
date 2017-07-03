@@ -1,6 +1,7 @@
 #Pi 3 explorer Radar
 requests
 
+websockets
 #bluepy
 git+https://github.com/IanHarvey/bluepy.git
 pyserial
