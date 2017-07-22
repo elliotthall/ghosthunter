@@ -4,23 +4,11 @@ import time
 from devices.radar import PiMicroRadarCartesian_RSSI
 
 # todo refactor radar to use async
-# Hunter position loop every heartbeat seconds
-# await get_antennae
-            #loop_finish
-                #await get_ble
-                #await get_wifi
-# K-nearest with navigation map
-# compare to last position
-# if changed, update, notify hunterposition
 
 # todo then detection loop?
 
 trigger = False
 
-async def device_recharge(device):
-    if device.device_ready == False:
-        await time.sleep(device.device_interval)
-        device.device_ready = True
 
 
 async def main():

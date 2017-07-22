@@ -1,15 +1,23 @@
+import asyncio
 import logging
-import requests
-import subprocess
-import shlex
 import re
-from bluepy.btle import Scanner
+import shlex
+import subprocess
 import time
-import threading
+
+import requests
 import websockets
+from bluepy.btle import Scanner
+
+from local import (
+    HUNT_URL,
+    HUNT_DETECTION_URI
+)
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
+
+
 # This is the base object from which all hunter devices should be derived.
 
 
@@ -32,6 +40,10 @@ class HunterBase(object):
     detection_angle = 360
     # Device is ready to scan
     device_ready = False
+    # The main event loop for the device
+    event_loop = None
+    # The websocket for communication with the hunt server
+    websocket = None
 
     options = {}
 
@@ -39,20 +51,85 @@ class HunterBase(object):
         super(HunterBase, self).__init__()
         self.hunt_context = hunt_context
 
+    def get_async_events(self):
+        return [self.device_recharge()]
+
+    # todo connect to Hunt websocket
+    async def connect(self):
+        self.websocket = websockets.connect(HUNT_URL)
+
+    # todo send timestamp to navigator
+    # download new db if out of date
+    # instantiate when ready
+    async def update_fingerprint_database(self):
+        pass
+
     # Activate the device
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
-    def bootup(self):
-        # Do some setup stuff here
-        self.device_ready = True
-        self.send_device_ready()
+    async def bootup(self):
+
+        # todo Query navigator for fingerprint database
+        self.update_fingerprint_database()
+        # Setup the event loop
+        self.event_loop = asyncio.get_event_loop()
+        self.event_loop.run_forever(self.get_async_events())
+        retries = 0
+        while self.device_ready is False and retries < 5:
+            self.connect()
+            if self.websocket:
+                self.send_device_ready()
+                self.device_ready = True
+            else:
+                retries += 1
+                logging.warning("Connection to hunt server failed.  Retrying...")
+        if retries == 5:
+            raise IOError("Connection to hunt server failed.")
+
+    def shutdown(self):
+        self.event_loop.stop()
+        self.event_loop.close()
+
+    # Time device 'cooldown' after detection attempt
+    async def device_recharge(device):
+        if device.device_ready == False:
+            await time.sleep(device.device_interval)
+            device.device_ready = True
+
+    # Send the device's position and properties
+    # to hunt server via REST
+    # todo websockets
+    def broadcast_position(self):
+        try:
+            hunt_response = requests.post(
+                self.hunt_context['broadcast_url'],
+                json=self.serialize(), timeout=5)
+            # If it's not 200, raise an exception
+            hunt_response.raise_for_status()
+            return hunt_response
+        except requests.exceptions.Timeout as timeouterror:
+            logging.error("Request timed out:" + timeouterror)
+        except requests.exceptions.ConnectionError as connecterror:
+            logging.error("Error connecting to hunt server:" + connecterror)
+        except requests.exceptions.HTTPError as httperror:
+            logging.error("Error in broadcast:" + httperror)
+
+    # Query the hunt server with device's attribute and
+    # current location.
+    # Receive all active events it can "see"
+    async def send_detection_request(self):
+        # todo is this right? Error trap when correct
+        async with websockets.connect(HUNT_DETECTION_URI) as websocket:
+            await websocket.send(self.serialize())
+            hunt_response = await websocket.recv()
+            return hunt_response
 
     # Begin a detection sweep.
-    def init_detection(self):
-        logging.debug(self.uid+": begin detection sweep")
-        # Tell the Hunt where we are
-        hunt_response = self.broadcast_position().json()
-        self.parse_response(hunt_response)
+    async def init_detection(self):
+        logging.debug(self.uid + ": begin detection sweep")
+        # Query hunt
+        hunt_response = await self.send_detection_request()
+        await self.parse_response(hunt_response)
         # Finish  detection
         self.reset_device(hunt_response)
 
@@ -65,32 +142,8 @@ class HunterBase(object):
 
     # Detection sweep finished, cleanup
     def end_detection(self, hunt_response):
-        logging.debug(self.uid+": end detection sweep")
-
-    def reset_device(self, hunt_response):
-        self.end_detection(hunt_response)
-        # Start timer for device ready flag
-        device_ready = threading.Timer(
-            self.device_interval, self.set_device_ready)
-        device_ready.setName('device_ready_timer')
-        device_ready.start()
-
-    # Send the device's position and properties
-    # to hunt server via REST
-    def broadcast_position(self):
-        try:
-            hunt_response = requests.post(
-                self.hunt_context['broadcast_url'],
-                json=self.serialize(), timeout=5)
-            # If it's not 200, raise an exception
-            hunt_response.raise_for_status()
-            return hunt_response
-        except requests.exceptions.Timeout as timeouterror:
-            logging.error("Request timed out:"+timeouterror)
-        except requests.exceptions.ConnectionError as connecterror:
-            logging.error("Error connecting to hunt server:"+connecterror)
-        except requests.exceptions.HTTPError as httperror:
-            logging.error("Error in broadcast:"+httperror)
+        logging.debug(self.uid + ": end detection sweep")
+        self.device_ready = False
 
     # Serialize device's properties
     def serialize(self):
@@ -127,9 +180,12 @@ class HunterBase(object):
 class Hunter_RSSI(HunterBase):
     navigator_name = 'RSSI'
     # Use wifi
-    wifi = True
+    # todo shutting this off for now
+    wifi = False
     # Use BLE
     BLE = True
+    # The serialized version of the fingerprint database
+    fingerprints = None
 
     # Bluetooh options
     # Length of time to scan
@@ -139,6 +195,9 @@ class Hunter_RSSI(HunterBase):
     ble_name_prefix = "GHunt"
     ble_fingerprints = {}
     stopevent = None
+
+    # id of the point in fingerprint database of current location
+    current_location_id = None
 
     # Wifi variables
     # commands for getting/parsing wifi report
@@ -151,27 +210,16 @@ class Hunter_RSSI(HunterBase):
         self.wifi = wifi
         self.BLE = BLE
 
+    def get_async_events(self):
+        return [self.device_recharge(), self.update_position()]
+
     # Activate the device
     def bootup(self):
-        # Begin scanning thread
-        if self.BLE:
-            self.stopevent = threading.Event()
-            d = threading.Thread(name='ble_thread',
-                                 target=self.ble_thread, args=(self.stopevent,))
-            # d.setDaemon(True)
-            d.start()
-
-        self.set_device_ready()
-
-    # Teardown
-    def shutdown(self):
-        if self.BLE:
-            if self.stopevent:
-                self.stopevent.set()
+        super(Hunter_RSSI, self).bootup()
 
     # Uses iwlist parsed with egrep to get nearby access points
     # Note: Requires sudo!
-    def get_wifi(self):
+    async def get_wifi(self):
         iwprocess = subprocess.Popen(self.iwargs, stdout=subprocess.PIPE)
         egrepprocess = subprocess.Popen(
             self.egrepargs, stdin=iwprocess.stdout, stdout=subprocess.PIPE)
@@ -207,15 +255,10 @@ class Hunter_RSSI(HunterBase):
     def get_ble(self):
         return self.ble_fingerprints
 
-    def ble_thread(self, stopevent):
-        while not stopevent.isSet():
-            self.ble_scan()
-            time.sleep(self.ble_scan_rest)
-
     # Uses bluepy https://github.com/IanHarvey/bluepy
     # Scan for bluetooth devices, filter by prefix
     # to only get relevant beacons, return mac & RSSI
-    def ble_scan(self):
+    async def ble_scan(self):
         scanner = Scanner()
         devices = scanner.scan(self.ble_scan_length)
         # Clear the last scan
@@ -231,15 +274,29 @@ class Hunter_RSSI(HunterBase):
                             "Name": name, "RSSI": dev.rssi}
                     break
 
+    # todo Accept new location data and find closest match
+    # in fingerprint database with K-nearest algorithim
+    @staticmethod
+    async def get_fingerprint_from_signals(self, new_position_data):
+        pass
+
     # Return wifi and/or BLE signal information
-    def getposition(self):
+    async def getsignals(self):
         if self.wifi:
-            wifi = self.get_wifi()
+            wifi = await self.get_wifi()
         else:
             wifi = {}
         if self.BLE:
-            BLE = self.get_BLE()
+            BLE = await self.ble_scan()
         else:
             BLE = {}
         position = {'RSSI': {'wifi': wifi, 'BLE': BLE}}
         return position
+
+    async def update_position(self):
+        new_position_data = await self.getsignals()
+        new_location = await self.get_fingerprint_from_signals(new_position_data)
+        if new_location != self.current_location_id:
+            # Location has changed
+            self.current_location_id = new_location
+            self.broadcast_position()
