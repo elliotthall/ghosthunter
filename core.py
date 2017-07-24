@@ -255,12 +255,16 @@ class Hunter_RSSI(HunterBase):
     def get_ble(self):
         return self.ble_fingerprints
 
+    async def ble_scan(self):
+        scanner = Scanner()
+        return scanner.scan(self.ble_scan_length)
+
     # Uses bluepy https://github.com/IanHarvey/bluepy
     # Scan for bluetooth devices, filter by prefix
     # to only get relevant beacons, return mac & RSSI
-    async def ble_scan(self):
-        scanner = Scanner()
-        devices = await scanner.scan(self.ble_scan_length)
+    async def get_ble_devices(self):
+
+        devices = await self.ble_scan()
         # Clear the last scan
         ble_fingerprints = {}
         for dev in devices:
@@ -288,7 +292,7 @@ class Hunter_RSSI(HunterBase):
         else:
             wifi = {}
         if self.BLE:
-            BLE = await self.ble_scan()
+            BLE = await self.get_ble_devices()
         else:
             BLE = {}
         position = {'RSSI': {'wifi': wifi, 'BLE': BLE}}

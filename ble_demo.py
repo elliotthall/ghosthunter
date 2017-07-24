@@ -16,7 +16,7 @@ async def main():
     print("Pi Microbit Ghost Radar version 0.1")
     device = PiMicroRadar(hunt_context)
     device.device_ready = False
-    await device.ble_scan()
+    await device.get_ble_devices()
     for ble in device.ble_fingerprints:
         print (ble)
 
