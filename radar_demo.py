@@ -1,4 +1,4 @@
-from devices.radar import PiMicroRadarCartesian_RSSI
+from devices.radar import PiMicroRadar
 import time
 # Diagnostic/ demo for the pimicro radar
 
@@ -8,7 +8,7 @@ device = None
 def demo_init():
     hunt_context = {}
     print("Pi Microbit Ghost Radar version 0.1")
-    device = PiMicroRadarCartesian_RSSI(hunt_context)
+    device = PiMicroRadar(hunt_context)
     # device.serial_address = '/dev/cu.usbmodem14522'
     # Boot up
     print("Booting up...\n")

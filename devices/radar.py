@@ -14,7 +14,7 @@ class naming convention: device-type-navigator
 """
 
 
-class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
+class PiMicroRadar(Hunter_RSSI):
     device_type = 'radar'
 
     # Properties of hunt this hunter is attached to
@@ -80,7 +80,7 @@ class PiMicroRadarCartesian_RSSI(Hunter_RSSI):
         self.serial = serial.Serial(self.serial_address, 115200, timeout=3)
 
     def getposition(self):
-        position = super(PiMicroRadarCartesian_RSSI, self).getPosition()
+        position = super(PiMicroRadar, self).getPosition()
         # Add the microbit information
         microbit_data = self.get_microbit_sensor_data()
         position['heading'] = microbit_data['heading']

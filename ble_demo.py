@@ -1,7 +1,7 @@
 import asyncio
 from core import Hunter_RSSI
 import time
-from devices.radar import PiMicroRadarCartesian_RSSI
+from devices.radar import PiMicroRadar
 
 # todo refactor radar to use async
 
@@ -14,7 +14,7 @@ trigger = False
 async def main():
     hunt_context = {}
     print("Pi Microbit Ghost Radar version 0.1")
-    device = PiMicroRadarCartesian_RSSI(hunt_context)
+    device = PiMicroRadar(hunt_context)
     device.device_ready = False
 
 
