@@ -16,9 +16,12 @@ async def main():
     print("Pi Microbit Ghost Radar version 0.1")
     device = PiMicroRadar(hunt_context)
     device.device_ready = False
-    await device.get_ble_devices()
-    for ble in device.ble_fingerprints:
-        print (ble)
+    fake_fingerprints = {
+        "cf:a7:21:12:06:b8":{"x":5,"y":2,"z":0}
+    }
+    device.fingerprints = fake_fingerprints
+    await device.update_position()
+    print (device.current_location)
 
 
 

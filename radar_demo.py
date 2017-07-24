@@ -67,6 +67,17 @@ RSSI = TxPower - 10 * n * lg(d)
 n = 2 (in free space)
 d = 10 ^ ((TxPower - RSSI) / (10 * n))
 
+Example:
+
+MAC - cf:a7:21:12:06:b8
+RSSI - -61
+Flags:06
+Tx Power:f4
+Complete 16b Services:aafe
+16b Service Data:0dd071556d31343159
+Complete Local Name:Kontakt
+Kontakt
+
 """
 
 def ble_demo(device):

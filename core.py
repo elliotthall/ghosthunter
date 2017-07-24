@@ -8,6 +8,7 @@ import time
 import requests
 import websockets
 from bluepy.btle import Scanner
+from operator import itemgetter
 
 from local import (
     HUNT_URL,
@@ -193,11 +194,11 @@ class Hunter_RSSI(HunterBase):
     # Sleep intervals between scans
     ble_scan_rest = 2.0
     ble_name_prefix = "Kontakt"
-    ble_fingerprints = {}
+    ble_scan_data = {}
     stopevent = None
 
     # id of the point in fingerprint database of current location
-    current_location_id = None
+    current_location = {"x":0,"y":0,"z":0}
 
     # Wifi variables
     # commands for getting/parsing wifi report
@@ -253,7 +254,7 @@ class Hunter_RSSI(HunterBase):
 
     # Return the last scan results
     def get_ble(self):
-        return self.ble_fingerprints
+        return self.ble_scan_data
 
     async def ble_scan(self):
         scanner = Scanner()
@@ -263,10 +264,9 @@ class Hunter_RSSI(HunterBase):
     # Scan for bluetooth devices, filter by prefix
     # to only get relevant beacons, return mac & RSSI
     async def get_ble_devices(self):
-
         devices = await self.ble_scan()
         # Clear the last scan
-        ble_fingerprints = {}
+        ble_devices = list()
         for dev in devices:
             # Get name
             for (adtype, desc, value) in dev.getScanData():
@@ -274,34 +274,39 @@ class Hunter_RSSI(HunterBase):
                     name = value
                     # Does name prefix exist in local name?
                     if (name is not None and self.ble_name_prefix in name):
-                        ble_fingerprints[dev.addr] = {
-                            "Name": name, "RSSI": dev.rssi}
-                    break
-        self.ble_fingerprints = ble_fingerprints
+                        ble_devices.append({'MAC':dev.addr,
+                            "Name": name, "RSSI": dev.rssi})
+        # Use nearest beacon for database
+        nearest = sorted(ble_devices, key=itemgetter('RSSI'), reverse=True)
+        self.ble_scan_data = ble_devices
 
-    # todo Accept new location data and find closest match
-    # in fingerprint database with K-nearest algorithim
-    @staticmethod
+    # currently only straight ble lookup
+    # todo modify by rssi if possible
     async def get_fingerprint_from_signals(self, new_position_data):
-        pass
+        ble_data = new_position_data['ble']
+        try:
+            return self.fingerprints[ble_data[0]['MAC']]
+        except IndexError:
+            logging.warning("Beacon with MAC {} not found in fingerprints!".format(ble_data[0]['MAC']))
 
     # Return wifi and/or BLE signal information
     async def getsignals(self):
         if self.wifi:
-            wifi = await self.get_wifi()
+            wifi = self.get_wifi()
         else:
             wifi = {}
         if self.BLE:
+            # Is this right? How to do in paralell?
             BLE = await self.get_ble_devices()
         else:
             BLE = {}
-        position = {'RSSI': {'wifi': wifi, 'BLE': BLE}}
+        position = {'RSSI': {'wifi': wifi, 'ble': BLE}}
         return position
 
     async def update_position(self):
         new_position_data = await self.getsignals()
-        new_location = await self.get_fingerprint_from_signals(new_position_data)
-        if new_location != self.current_location_id:
+        new_location = self.get_fingerprint_from_signals(new_position_data)
+        if new_location != self.current_location:
             # Location has changed
-            self.current_location_id = new_location
+            self.current_location = new_location
             self.broadcast_position()
