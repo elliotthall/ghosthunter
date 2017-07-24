@@ -192,7 +192,7 @@ class Hunter_RSSI(HunterBase):
     ble_scan_length = 3.0
     # Sleep intervals between scans
     ble_scan_rest = 2.0
-    ble_name_prefix = "GHunt"
+    ble_name_prefix = "Kontakt"
     ble_fingerprints = {}
     stopevent = None
 
@@ -260,9 +260,9 @@ class Hunter_RSSI(HunterBase):
     # to only get relevant beacons, return mac & RSSI
     async def ble_scan(self):
         scanner = Scanner()
-        devices = scanner.scan(self.ble_scan_length)
+        devices = await scanner.scan(self.ble_scan_length)
         # Clear the last scan
-        self.ble_fingerprints = {}
+        ble_fingerprints = {}
         for dev in devices:
             # Get name
             for (adtype, desc, value) in dev.getScanData():
@@ -270,9 +270,10 @@ class Hunter_RSSI(HunterBase):
                     name = value
                     # Does name prefix exist in local name?
                     if (name is not None and self.ble_name_prefix in name):
-                        self.ble_fingerprints[dev.addr] = {
+                        ble_fingerprints[dev.addr] = {
                             "Name": name, "RSSI": dev.rssi}
                     break
+        self.ble_fingerprints = ble_fingerprints
 
     # todo Accept new location data and find closest match
     # in fingerprint database with K-nearest algorithim
