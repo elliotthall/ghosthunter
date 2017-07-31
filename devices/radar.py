@@ -11,6 +11,9 @@ Sweeps the are in 360 degrees for clues
 Note:
 class naming convention: device-type-navigator
 
+Additions to Event Loop:
+- Check serial connection for input from micrbit
+
 """
 
 
@@ -29,6 +32,11 @@ class PiMicroRadar(Hunter_RSSI):
     serial_address = '/dev/ttyACM0'
     serial = None
     sio = None
+
+    def get_async_events(self):
+        async_events = super(PiMicroRadar, self).get_async_events()
+        async_events.append(self.listen_microbit())
+        return async_events
 
     # Clue detected.  Pass back
     def detected(self, hunt_response):
@@ -54,7 +62,7 @@ class PiMicroRadar(Hunter_RSSI):
         self.serial.write(b'detected=0\n')
 
     # Read the sensor data from the microbit over the serial connection
-    def get_microbit_sensor_data(self):
+    async def listen_microbit(self):
         data = {}
         if self.serial is None:
             self.init_serial()
@@ -70,7 +78,10 @@ class PiMicroRadar(Hunter_RSSI):
                 print ("Bad data from microbit {}".format(data_line))
         return data
 
-    def set_device_ready(self):
+    async def init_detection(self):
+        pass
+
+    def send_device_ready(self):
         self.device_ready = True
         if self.serial is None:
             self.init_serial()
@@ -82,6 +93,6 @@ class PiMicroRadar(Hunter_RSSI):
     def getposition(self):
         position = super(PiMicroRadar, self).getPosition()
         # Add the microbit information
-        microbit_data = self.get_microbit_sensor_data()
+        microbit_data = self.listen_microbit()
         position['heading'] = microbit_data['heading']
         return position

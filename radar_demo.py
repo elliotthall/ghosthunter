@@ -21,7 +21,7 @@ def test_microbit(device):
     print("*** Testing Microbit ***\n")
     init_msg = device.serial.readline()
     print (init_msg)
-    data = device.get_microbit_sensor_data()
+    data = device.listen_microbit()
     if len(data) > 0:
         print("Microbit sensor response\n {}".format(data))
     else:
