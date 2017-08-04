@@ -66,7 +66,15 @@ class PiMicroRadar(Hunter_RSSI):
         data = {}
         if self.serial is None:
             self.init_serial()
-        if self.serial is not None:            
+        if self.serial is not None:
+            # Check for messages from microbit first
+            microbit_response = self.serial.readline()
+            if microbit_response and len(microbit_response) > 0:
+                # Parse the microbit message
+                if "begin_detection" in microbit_response:
+                    await self.init_detection()
+
+            # Request sensor data
             self.serial.write(b'request_sensor_data=1\n')
             data_line = self.serial.readline()
             try:

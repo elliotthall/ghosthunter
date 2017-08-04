@@ -1,20 +1,23 @@
 import asyncio
+import json
 import logging
 import re
 import shlex
 import subprocess
 import time
 from operator import itemgetter
-import json
 
 import websockets
 from bluepy.btle import Scanner
 
 from local import (
     HUNT_URL,
-    HUNT_DETECTION_URI,
     NAVIGATOR_URL
 )
+
+HUNT_BEGIN_MESSAGE = u'HUNT_BEGIN'
+HUNT_END_MESSAGE = u'HUNT_END'
+EVENT_UPDATE_MESSAGE_HEADER = u'available_events'
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
@@ -42,6 +45,8 @@ class HunterBase(object):
     detection_angle = 360
     # Device is ready to scan
     device_ready = False
+    # If the hunt has begun, begin allowing event discovery
+    hunt_begun = False
     # The main event loop for the device
     event_loop = None
     # The websocket for communication with the hunt server
@@ -83,15 +88,13 @@ class HunterBase(object):
     # to hunt server
     async def broadcast_position(self):
         try:
-            # Check if socket open, otherwiser try to reconnect
+            # Check if socket open, otherwise try to reconnect
             await self.getwebsocket()
             await self.websocket.send(self.serialize())
-
         except websockets.exceptions.ConnectionClosed:
             logging.warning("websocket connection lost")
         except websockets.exceptions.InvalidURI:
             logging.error("Bad websocket URI")
-
 
     # Begin a detection sweep.
     async def init_detection(self):
@@ -155,6 +158,8 @@ Subclass of hunter that uses wifi and/or BLE for positioning
 - Listen for new information from server
 
 """
+
+
 class Hunter_RSSI(HunterBase):
     navigator_name = 'RSSI'
     # Use wifi
@@ -166,6 +171,9 @@ class Hunter_RSSI(HunterBase):
     fingerprints = None
     # time database was downloaded
     fingerprint_timestamp = None
+    # Events that are active and could be detected by device
+    available_events = None
+
     # Bluetooh options
     # Length of time to scan
     ble_scan_length = 3.0
@@ -173,9 +181,9 @@ class Hunter_RSSI(HunterBase):
     ble_scan_rest = 2.0
     ble_name_prefix = "Kontakt"
     ble_scan_data = {}
-    stopevent = None
 
     # id of the point in fingerprint database of current location
+    # todo or just ble uid?
     current_location = {"x": 0, "y": 0, "z": 0}
 
     # Wifi variables
@@ -192,6 +200,7 @@ class Hunter_RSSI(HunterBase):
         # send timestamp to navigator
         # download new db if out of date
         # instantiate when ready
+
     async def update_fingerprint_database(self):
         async with websockets.connect(NAVIGATOR_URL) as websocket:
             await websocket.send(self.fingerprint_timestamp)
@@ -203,13 +212,37 @@ class Hunter_RSSI(HunterBase):
                 self.fingerprints = new_database['fingerprints']
             return True
 
+    # listen on websocket for updates from server
+    async def listen_server(self):
+        # todo error trap
+        server_update = await self.websocket.recv()
+        if HUNT_BEGIN_MESSAGE in server_update:
+            # hunt begin
+            self.hunt_begin()
+        elif HUNT_END_MESSAGE in server_update:
+            # Hunt over
+            self.hunt_ended()
+        elif EVENT_UPDATE_MESSAGE_HEADER in server_update:
+            # update available events
+            # todo Something else happen here, notify other parts of event change?
+            new_events = json.loads(server_update)
+            self.available_events = new_events[EVENT_UPDATE_MESSAGE_HEADER]
+
+    def hunt_begin(self):
+        self.hunt_begun = True
+
+
+    def hunt_ended(self):
+        # todo cooldown, send final data state?
+        self.shutdown()
+
     def get_async_events(self):
-        return [self.device_recharge(), self.update_position()]
+        return [self.device_recharge(), self.update_position(), self.listen_server()]
 
     # Activate the device
     def bootup(self):
         super(Hunter_RSSI, self).bootup()
-        print ("Getting Fingerprint Databse...")
+        print("Getting Fingerprint Databse...")
         try:
             ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 30)
         except asyncio.TimeoutError:
@@ -220,13 +253,14 @@ class Hunter_RSSI(HunterBase):
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to hunt server failed!")
         # Setup the event loop
-        loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_event_loop()
         asyncio.ensure_future(self.get_async_events())
+        print("Device ready")
         self.device_ready = True
         try:
-            loop.run_forever()
+            self.loop.run_forever()
         finally:
-            loop.close()
+            self.loop.close()
 
     # Uses iwlist parsed with egrep to get nearby access points
     # Note: Requires sudo!
