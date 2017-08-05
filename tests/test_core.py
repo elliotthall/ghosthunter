@@ -1,7 +1,9 @@
 import unittest
 import unittest.mock as mock
-from core import HunterRSSI
+
+from hunter.core import HunterRSSI
 from local import SKIP_WEBSOCKET
+
 
 class HunterRSSITest(unittest.TestCase):
 

@@ -1,7 +1,8 @@
 import logging
-from core import HunterRSSI
+
 import serial
-import io
+
+from hunter.core import HunterRSSI
 
 # import explorerhat as eh
 """

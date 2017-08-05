@@ -1,6 +1,5 @@
 import asyncio
-from core import HunterRSSI
-import time
+
 from devices.radar import PiMicroRadar
 
 # todo refactor radar to use async
