@@ -15,7 +15,7 @@ class HunterRSSITest(unittest.TestCase):
     def test_update_fingerprint_database(self):
         # Query fingerprint db
         # match its format against our mock
-        with mock.patch('core.HunterRSSI.update_fingerprint_database') as mock_update_fingerprint:
+        with mock.patch('hunter.core.HunterRSSI.update_fingerprint_database') as mock_update_fingerprint:
             pass
         pass
 
@@ -23,8 +23,8 @@ class HunterRSSITest(unittest.TestCase):
     def test_getwebsocket(self):
         pass
 
-    @mock.patch('core.HunterRSSI.update_fingerprint_database')
-    @mock.patch('core.HunterRSSI.getwebsocket')
+    @mock.patch('hunter.core.HunterRSSI.update_fingerprint_database')
+    @mock.patch('hunter.core.HunterRSSI.getwebsocket')
     def test_bootup(self, MockUpdateFingerprints, Mockgetwebsocket):
         MockUpdateFingerprints.return_value = True
         Mockgetwebsocket.return_value = True
