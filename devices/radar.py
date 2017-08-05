@@ -1,5 +1,5 @@
 import logging
-from core import Hunter_RSSI
+from core import HunterRSSI
 import serial
 import io
 
@@ -17,7 +17,7 @@ Additions to Event Loop:
 """
 
 
-class PiMicroRadar(Hunter_RSSI):
+class PiMicroRadar(HunterRSSI):
     device_type = 'radar'
 
     # Properties of hunt this hunter is attached to

@@ -1,5 +1,5 @@
 import asyncio
-from core import Hunter_RSSI
+from core import HunterRSSI
 import time
 from devices.radar import PiMicroRadar
 

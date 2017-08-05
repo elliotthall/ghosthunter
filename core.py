@@ -160,7 +160,7 @@ Subclass of hunter that uses wifi and/or BLE for positioning
 """
 
 
-class Hunter_RSSI(HunterBase):
+class HunterRSSI(HunterBase):
     navigator_name = 'RSSI'
     # Use wifi
     # todo shutting this off for now
@@ -191,8 +191,8 @@ class Hunter_RSSI(HunterBase):
     iwargs = shlex.split('iwlist wlan0 scanning')
     egrepargs = shlex.split("egrep 'Cell |ESSID|Quality'")
 
-    def __init__(self, hunt_context, wifi=True, BLE=True):
-        super(Hunter_RSSI, self).__init__(hunt_context)
+    def __init__(self, hunt_context, wifi=False, BLE=True):
+        super(HunterRSSI, self).__init__(hunt_context)
         self.hunt_context = hunt_context
         self.wifi = wifi
         self.BLE = BLE
@@ -241,7 +241,7 @@ class Hunter_RSSI(HunterBase):
 
     # Activate the device
     def bootup(self):
-        super(Hunter_RSSI, self).bootup()
+        super(HunterRSSI, self).bootup()
         print("Getting Fingerprint Databse...")
         try:
             ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 30)
