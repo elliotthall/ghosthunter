@@ -14,6 +14,9 @@ class HunterRSSITest(unittest.TestCase):
         asyncio.set_event_loop(None)
         self.hunter = HunterRSSI(context)
 
+    def tearDown(self):
+        self.loop.close()
+
     @unittest.skipIf(SKIP_WEBSOCKET, 'Skipping websocket calls to the fingerprint server')
     def test_update_fingerprint_database(self):
         # Query fingerprint db
@@ -31,8 +34,10 @@ class HunterRSSITest(unittest.TestCase):
     def test_bootup(self, MockUpdateFingerprints, Mockgetwebsocket):
         MockUpdateFingerprints.return_value = True
         Mockgetwebsocket.return_value = True
-        self.loop.run_until_complete(self.hunter.bootup())
+        #self.loop.run_until_complete(self.hunter.bootup())
+        self.hunter.bootup(self.loop)
         self.assertEqual(self.hunter.device_ready, True)
+
 
     # shutdown
 

@@ -240,21 +240,26 @@ class HunterRSSI(HunterBase):
         return [self.device_recharge(), self.update_position(), self.listen_server()]
 
     # Activate the device
-    def bootup(self):
+    def bootup(self, loop):
         super(HunterRSSI, self).bootup()
+        # Setup the event loop
+        if loop is None:
+            raise RuntimeError("No event loop passed")
+        if loop.is_closed():
+            raise RuntimeError("Event loop already closed")
+        self.loop = loop
+        asyncio.ensure_future(self.get_async_events(),loop=self.loop)
         print("Getting Fingerprint Databse...")
         try:
-            ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 5)
+            ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 5, loop=self.loop)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to fingerprint db failed!")
         print("Connecting to server...")
         try:
-            ready = yield from asyncio.wait_for(self.getwebsocket(), 5)
+            ready = yield from asyncio.wait_for(self.getwebsocket(), 5, loop=self.loop)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to hunt server failed!")
-        # Setup the event loop
-        self.loop = asyncio.get_event_loop()
-        asyncio.ensure_future(self.get_async_events())
+
         print("Device ready")
         self.device_ready = True
         # try:
