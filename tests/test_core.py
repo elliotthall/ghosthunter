@@ -31,8 +31,7 @@ class HunterRSSITest(unittest.TestCase):
     def test_bootup(self, MockUpdateFingerprints, Mockgetwebsocket):
         MockUpdateFingerprints.return_value = True
         Mockgetwebsocket.return_value = True
-        #self.loop.run_until_complete(self.hunter.bootup())
-        self.hunter.bootup()
+        self.loop.run_until_complete(self.hunter.bootup())
         self.assertEqual(self.hunter.device_ready, True)
 
     # shutdown

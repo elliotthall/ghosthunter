@@ -244,12 +244,12 @@ class HunterRSSI(HunterBase):
         super(HunterRSSI, self).bootup()
         print("Getting Fingerprint Databse...")
         try:
-            ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 30)
+            ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 5)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to fingerprint db failed!")
         print("Connecting to server...")
         try:
-            ready = yield from asyncio.wait_for(self.getwebsocket(), 30)
+            ready = yield from asyncio.wait_for(self.getwebsocket(), 5)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to hunt server failed!")
         # Setup the event loop
