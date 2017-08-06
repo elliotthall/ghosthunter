@@ -257,10 +257,10 @@ class HunterRSSI(HunterBase):
         asyncio.ensure_future(self.get_async_events())
         print("Device ready")
         self.device_ready = True
-        try:
-            self.loop.run_forever()
-        finally:
-            self.loop.close()
+        # try:
+        #     self.loop.run_forever()
+        # finally:
+        #     self.loop.close()
 
     # Uses iwlist parsed with egrep to get nearby access points
     # Note: Requires sudo!
