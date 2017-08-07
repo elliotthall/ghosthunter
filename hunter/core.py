@@ -71,7 +71,7 @@ class HunterBase(object):
     # Activate the device
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
-    async def bootup(self):
+    def bootup(self, loop):
         pass
 
     def shutdown(self):
