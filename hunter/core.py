@@ -201,10 +201,7 @@ class HunterRSSI(HunterBase):
         # download new db if out of date
         # instantiate when ready
 
-    async def update_fingerprint_database(self):
-        async with websockets.connect(NAVIGATOR_URL) as websocket:
-            await websocket.send(self.fingerprint_timestamp)
-            response = await websocket.recv()
+    def update_fingerprint_database(self, response):
             if response != "0":
                 # Update the database
                 new_database = json.loads(response)
@@ -248,12 +245,9 @@ class HunterRSSI(HunterBase):
         if loop.is_closed():
             raise RuntimeError("Event loop already closed")
         self.loop = loop
+
         asyncio.ensure_future(self.get_async_events(),loop=self.loop)
-        print("Getting Fingerprint Databse...")
-        try:
-            ready = yield from asyncio.wait_for(self.update_fingerprint_database(), 5, loop=self.loop)
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError("Connection to fingerprint db failed!")
+
         print("Connecting to server...")
         try:
             ready = yield from asyncio.wait_for(self.getwebsocket(), 5, loop=self.loop)
