@@ -11,8 +11,7 @@ import websockets
 from bluepy.btle import Scanner
 
 from local import (
-    HUNT_URL,
-    NAVIGATOR_URL
+    HUNT_URL
 )
 
 HUNT_BEGIN_MESSAGE = u'HUNT_BEGIN'
@@ -246,13 +245,14 @@ class HunterRSSI(HunterBase):
             raise RuntimeError("Event loop already closed")
         self.loop = loop
 
-        asyncio.ensure_future(self.get_async_events(),loop=self.loop)
-
         print("Connecting to server...")
         try:
-            ready = yield from asyncio.wait_for(self.getwebsocket(), 5, loop=self.loop)
+            ready = yield from asyncio.wait_for(self.getwebsocket(), 10, loop=self.loop)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to hunt server failed!")
+
+
+        asyncio.ensure_future(self.get_async_events(), loop=self.loop)
 
         print("Device ready")
         self.device_ready = True

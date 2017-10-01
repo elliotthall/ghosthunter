@@ -13,6 +13,9 @@ class HunterRSSITest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
         self.hunter = HunterRSSI(context)
+        self.hunt_response={
+
+        }
 
     def tearDown(self):
         self.loop.close()
