@@ -8,7 +8,7 @@ import time
 from operator import itemgetter
 
 import websockets
-from bluepy.btle import Scanner
+#from bluepy.btle import Scanner
 
 from local import (
     HUNT_URL
@@ -222,195 +222,195 @@ class HunterBase(object):
     """
 
 
-class HunterRSSI(HunterBase):
-    navigator_name = 'RSSI'
-    # Use wifi
-    # todo shutting this off for now
-    wifi = False
-    # Use BLE
-    BLE = True
-    # The serialized version of the fingerprint database
-    fingerprints = None
-    # time database was downloaded
-    fingerprint_timestamp = None
-    # Events that are active and could be detected by device
-    available_events = None
-
-    # Bluetooh options
-    # Length of time to scan
-    ble_scan_length = 3.0
-    # Sleep intervals between scans
-    ble_scan_rest = 2.0
-    ble_name_prefix = "Kontakt"
-    ble_scan_data = {}
-
-    # id of the point in fingerprint database of current location
-    # todo or just ble uid?
-    current_location = {"x": 0, "y": 0, "z": 0}
-
-    # Wifi variables
-    # commands for getting/parsing wifi report
-    iwargs = shlex.split('iwlist wlan0 scanning')
-    egrepargs = shlex.split("egrep 'Cell |ESSID|Quality'")
-
-    def __init__(self, hunt_context, wifi=False, BLE=True):
-        super(HunterRSSI, self).__init__(hunt_context)
-        self.hunt_context = hunt_context
-        self.wifi = wifi
-        self.BLE = BLE
-
-        # send timestamp to navigator
-        # download new db if out of date
-        # instantiate when ready
-
-    def update_fingerprint_database(self, response):
-        if response != "0":
-            # Update the database
-            new_database = json.loads(response)
-            self.fingerprint_timestamp = new_database['timestamp']
-            self.fingerprints = new_database['fingerprints']
-        return True
-
-    # listen on websocket for updates from server
-    async def listen_server(self):
-        # todo error trap
-        server_update = await self.websocket.recv()
-        if HUNT_BEGIN_MESSAGE in server_update:
-            # hunt begin
-            self.hunt_begin()
-        elif HUNT_END_MESSAGE in server_update:
-            # Hunt over
-            self.hunt_ended()
-        elif EVENT_UPDATE_MESSAGE_HEADER in server_update:
-            # update available events
-            # todo Something else happen here, notify other parts of event change?
-            new_events = json.loads(server_update)
-            self.available_events = new_events[EVENT_UPDATE_MESSAGE_HEADER]
-
-    def hunt_begin(self):
-        self.hunt_begun = True
-
-    def hunt_ended(self):
-        # todo cooldown, send final data state?
-        self.shutdown()
-
-    def get_async_events(self):
-        return [self.device_recharge(), self.update_position(), self.listen_server()]
-
-    # Activate the device
-    def bootup(self, loop):
-        super(HunterRSSI, self).bootup()
-        # Setup the event loop
-        if loop is None:
-            raise RuntimeError("No event loop passed")
-        if loop.is_closed():
-            raise RuntimeError("Event loop already closed")
-        self.loop = loop
-
-        print("Connecting to server...")
-        try:
-            ready = yield from asyncio.wait_for(self.getwebsocket(), 10, loop=self.loop)
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError("Connection to hunt server failed!")
-
-        asyncio.ensure_future(self.get_async_events(), loop=self.loop)
-
-        print("Device ready")
-        self.device_ready = True
-        # try:
-        #     self.loop.run_forever()
-        # finally:
-        #     self.loop.close()
-
-    # Uses iwlist parsed with egrep to get nearby access points
-    # Note: Requires sudo!
-    async def get_wifi(self):
-        iwprocess = subprocess.Popen(self.iwargs, stdout=subprocess.PIPE)
-        egrepprocess = subprocess.Popen(
-            self.egrepargs, stdin=iwprocess.stdout, stdout=subprocess.PIPE)
-        wifi_report = egrepprocess.communicate()
-        wifi = list()
-        for access_point in wifi_report:
-            point = None
-            if access_point is not None:
-                for line in access_point.split('\n'):
-                    if 'Cell' in line:
-                        # New access point
-                        # Example: Cell 03 - Address: 00:8A:AE:DB:B6:E6
-                        point = {}
-                        m = re.search('Address\: (.*)$', line)
-                        if m is not None:
-                            point['Address'] = m.group(1)
-                    elif 'ESSID' in line:
-                        # ESSID:"SKY15622"\n
-                        m = re.search('ESSID\:\s*\"(.*)\"', line)
-                        if m is not None:
-                            point['ESSID'] = m.group(1)
-                    elif 'Signal' in line:
-                        # Quality=36/70  Signal level=-74 dBm
-                        # todo Quality as well?
-                        m = re.search('Signal level\=\s*(.*) dBm', line)
-                        if m is not None:
-                            point['RSSI'] = m.group(1)
-                if point is not None:
-                    wifi.append(point)
-        return wifi
-
-    # Return the last scan results
-    def get_ble(self):
-        return self.ble_scan_data
-
-    async def ble_scan(self):
-        scanner = Scanner()
-        return scanner.scan(self.ble_scan_length)
-
-    # Uses bluepy https://github.com/IanHarvey/bluepy
-    # Scan for bluetooth devices, filter by prefix
-    # to only get relevant beacons, return mac & RSSI
-    async def get_ble_devices(self):
-        devices = await self.ble_scan()
-        # Clear the last scan
-        ble_devices = list()
-        for dev in devices:
-            # Get name
-            for (adtype, desc, value) in dev.getScanData():
-                if "Local Name" in desc:
-                    name = value
-                    # Does name prefix exist in local name?
-                    if (name is not None and self.ble_name_prefix in name):
-                        ble_devices.append({'MAC': dev.addr,
-                                            "Name": name, "RSSI": dev.rssi})
-        # Use nearest beacon for database
-        nearest = sorted(ble_devices, key=itemgetter('RSSI'), reverse=True)
-        self.ble_scan_data = ble_devices
-
-    # currently only straight ble lookup
-    # todo modify by rssi if possible
-    async def get_fingerprint_from_signals(self, new_position_data):
-        ble_data = new_position_data['ble']
-        try:
-            return self.fingerprints[ble_data[0]['MAC']]
-        except IndexError:
-            logging.warning("Beacon with MAC {} not found in fingerprints!".format(ble_data[0]['MAC']))
-
-    # Return wifi and/or BLE signal information
-    async def getsignals(self):
-        if self.wifi:
-            wifi = self.get_wifi()
-        else:
-            wifi = {}
-        if self.BLE:
-            # Is this right? How to do in paralell?
-            BLE = await self.get_ble_devices()
-        else:
-            BLE = {}
-        position = {'RSSI': {'wifi': wifi, 'ble': BLE}}
-        return position
-
-    async def update_position(self):
-        new_position_data = await self.getsignals()
-        new_location = self.get_fingerprint_from_signals(new_position_data)
-        if new_location != self.current_location:
-            # Location has changed
-            self.current_location = new_location
-            self.broadcast_position()
+# class HunterRSSI(HunterBase):
+#     navigator_name = 'RSSI'
+#     # Use wifi
+#     # todo shutting this off for now
+#     wifi = False
+#     # Use BLE
+#     BLE = True
+#     # The serialized version of the fingerprint database
+#     fingerprints = None
+#     # time database was downloaded
+#     fingerprint_timestamp = None
+#     # Events that are active and could be detected by device
+#     available_events = None
+#
+#     # Bluetooh options
+#     # Length of time to scan
+#     ble_scan_length = 3.0
+#     # Sleep intervals between scans
+#     ble_scan_rest = 2.0
+#     ble_name_prefix = "Kontakt"
+#     ble_scan_data = {}
+#
+#     # id of the point in fingerprint database of current location
+#     # todo or just ble uid?
+#     current_location = {"x": 0, "y": 0, "z": 0}
+#
+#     # Wifi variables
+#     # commands for getting/parsing wifi report
+#     iwargs = shlex.split('iwlist wlan0 scanning')
+#     egrepargs = shlex.split("egrep 'Cell |ESSID|Quality'")
+#
+#     def __init__(self, hunt_context, wifi=False, BLE=True):
+#         super(HunterRSSI, self).__init__(hunt_context)
+#         self.hunt_context = hunt_context
+#         self.wifi = wifi
+#         self.BLE = BLE
+#
+#         # send timestamp to navigator
+#         # download new db if out of date
+#         # instantiate when ready
+#
+#     def update_fingerprint_database(self, response):
+#         if response != "0":
+#             # Update the database
+#             new_database = json.loads(response)
+#             self.fingerprint_timestamp = new_database['timestamp']
+#             self.fingerprints = new_database['fingerprints']
+#         return True
+#
+#     # listen on websocket for updates from server
+#     async def listen_server(self):
+#         # todo error trap
+#         server_update = await self.websocket.recv()
+#         if HUNT_BEGIN_MESSAGE in server_update:
+#             # hunt begin
+#             self.hunt_begin()
+#         elif HUNT_END_MESSAGE in server_update:
+#             # Hunt over
+#             self.hunt_ended()
+#         elif EVENT_UPDATE_MESSAGE_HEADER in server_update:
+#             # update available events
+#             # todo Something else happen here, notify other parts of event change?
+#             new_events = json.loads(server_update)
+#             self.available_events = new_events[EVENT_UPDATE_MESSAGE_HEADER]
+#
+#     def hunt_begin(self):
+#         self.hunt_begun = True
+#
+#     def hunt_ended(self):
+#         # todo cooldown, send final data state?
+#         self.shutdown()
+#
+#     def get_async_events(self):
+#         return [self.device_recharge(), self.update_position(), self.listen_server()]
+#
+#     # Activate the device
+#     def bootup(self, loop):
+#         super(HunterRSSI, self).bootup()
+#         # Setup the event loop
+#         if loop is None:
+#             raise RuntimeError("No event loop passed")
+#         if loop.is_closed():
+#             raise RuntimeError("Event loop already closed")
+#         self.loop = loop
+#
+#         print("Connecting to server...")
+#         try:
+#             ready = yield from asyncio.wait_for(self.getwebsocket(), 10, loop=self.loop)
+#         except asyncio.TimeoutError:
+#             raise asyncio.TimeoutError("Connection to hunt server failed!")
+#
+#         asyncio.ensure_future(self.get_async_events(), loop=self.loop)
+#
+#         print("Device ready")
+#         self.device_ready = True
+#         # try:
+#         #     self.loop.run_forever()
+#         # finally:
+#         #     self.loop.close()
+#
+#     # Uses iwlist parsed with egrep to get nearby access points
+#     # Note: Requires sudo!
+#     async def get_wifi(self):
+#         iwprocess = subprocess.Popen(self.iwargs, stdout=subprocess.PIPE)
+#         egrepprocess = subprocess.Popen(
+#             self.egrepargs, stdin=iwprocess.stdout, stdout=subprocess.PIPE)
+#         wifi_report = egrepprocess.communicate()
+#         wifi = list()
+#         for access_point in wifi_report:
+#             point = None
+#             if access_point is not None:
+#                 for line in access_point.split('\n'):
+#                     if 'Cell' in line:
+#                         # New access point
+#                         # Example: Cell 03 - Address: 00:8A:AE:DB:B6:E6
+#                         point = {}
+#                         m = re.search('Address\: (.*)$', line)
+#                         if m is not None:
+#                             point['Address'] = m.group(1)
+#                     elif 'ESSID' in line:
+#                         # ESSID:"SKY15622"\n
+#                         m = re.search('ESSID\:\s*\"(.*)\"', line)
+#                         if m is not None:
+#                             point['ESSID'] = m.group(1)
+#                     elif 'Signal' in line:
+#                         # Quality=36/70  Signal level=-74 dBm
+#                         # todo Quality as well?
+#                         m = re.search('Signal level\=\s*(.*) dBm', line)
+#                         if m is not None:
+#                             point['RSSI'] = m.group(1)
+#                 if point is not None:
+#                     wifi.append(point)
+#         return wifi
+#
+#     # Return the last scan results
+#     def get_ble(self):
+#         return self.ble_scan_data
+#
+#     async def ble_scan(self):
+#         scanner = Scanner()
+#         return scanner.scan(self.ble_scan_length)
+#
+#     # Uses bluepy https://github.com/IanHarvey/bluepy
+#     # Scan for bluetooth devices, filter by prefix
+#     # to only get relevant beacons, return mac & RSSI
+#     async def get_ble_devices(self):
+#         devices = await self.ble_scan()
+#         # Clear the last scan
+#         ble_devices = list()
+#         for dev in devices:
+#             # Get name
+#             for (adtype, desc, value) in dev.getScanData():
+#                 if "Local Name" in desc:
+#                     name = value
+#                     # Does name prefix exist in local name?
+#                     if (name is not None and self.ble_name_prefix in name):
+#                         ble_devices.append({'MAC': dev.addr,
+#                                             "Name": name, "RSSI": dev.rssi})
+#         # Use nearest beacon for database
+#         nearest = sorted(ble_devices, key=itemgetter('RSSI'), reverse=True)
+#         self.ble_scan_data = ble_devices
+#
+#     # currently only straight ble lookup
+#     # todo modify by rssi if possible
+#     async def get_fingerprint_from_signals(self, new_position_data):
+#         ble_data = new_position_data['ble']
+#         try:
+#             return self.fingerprints[ble_data[0]['MAC']]
+#         except IndexError:
+#             logging.warning("Beacon with MAC {} not found in fingerprints!".format(ble_data[0]['MAC']))
+#
+#     # Return wifi and/or BLE signal information
+#     async def getsignals(self):
+#         if self.wifi:
+#             wifi = self.get_wifi()
+#         else:
+#             wifi = {}
+#         if self.BLE:
+#             # Is this right? How to do in paralell?
+#             BLE = await self.get_ble_devices()
+#         else:
+#             BLE = {}
+#         position = {'RSSI': {'wifi': wifi, 'ble': BLE}}
+#         return position
+#
+#     async def update_position(self):
+#         new_position_data = await self.getsignals()
+#         new_location = self.get_fingerprint_from_signals(new_position_data)
+#         if new_location != self.current_location:
+#             # Location has changed
+#             self.current_location = new_location
+#             self.broadcast_position()
