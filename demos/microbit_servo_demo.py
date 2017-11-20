@@ -47,16 +47,46 @@ class Servo:
         self.write_us(us)
 
 
-class MicrobitServoDemo():       
+class MicrobitServoDemo(): 
+
+    def __init__(self, sv1, sv2, np):
+        self.sv1= sv1
+        self.sv2 = sv2
+        self.np = np
+        
+    def ready(self):
+        microbit.display.show('?', wait=False)
 
     def reset(self):
         # Reset the antenna and the screen
         microbit.display.clear()
-        # microbit.pin1.write_analog(0)        
-        # sv1.write_angle(self.angle_1)
+        self.antenna_min()
+        self.ready()
+        
+    # Min (farthest away) antenna settings
+    def antenna_min(self):
+        self.adjust_antenna_sweep(100,80,1)
+        
+    def antenna_max(self):
+        self.adjust_antenna_sweep(0,180,4)
+        
+    def diagnostic(self):
+        self.antenna_min()
+        microbit.sleep(500)
+        for strength in range(100, 0, -20):
+            self.adjust_antenna_sweep(strength)
+            microbit.sleep(500)
 
-    def adjust_antenna_sweep(self, servo, angle):
-        servo.write_angle(angle)
+    # Strength in 0-100
+    def adjust_antenna_sweep(self, angle_1,angle_2, neo_strength):        
+        demo.initdetectionanimation()        
+        demo.led_pulse(neo_strength)
+        self.sv1.write_angle(angle_1)
+        self.sv2.write_angle(angle_2)        
+        microbit.sleep(1000)
+        demo.led_fade(neo_strength)
+        self.ready()
+
         
     # use a neopixel strip for hot/cold pulse
     def led_pulse(self, strength):        
@@ -64,17 +94,19 @@ class MicrobitServoDemo():
         green = randint(0, 30)
         blue = randint(0, 30)
         # random example of reading
-        for pixel_id in range(0, strength):
-            np[pixel_id] = (red+strength, green+strength, blue+strength)
-            np.show()
+        for pixel_id in range(0, strength +1 ):
+            self.np[pixel_id] = (red+strength, green+strength, blue+strength)
+            self.np.show()
             microbit.sleep(100)
+        self.np.show()
      
     # fade down
     def led_fade(self, strength):
         for pixel_id in range(strength, 0, -1):
-            np[pixel_id] = (0, 0, 0)
-            np.show()
+            self.np[pixel_id] = (0, 0, 0)
+            self.np.show()
             microbit.sleep(100)
+        self.np.clear()
 
     # Radar 'blip' animation
     def initdetectionanimation(self):
@@ -86,37 +118,28 @@ class MicrobitServoDemo():
         microbit.display.clear()
 
 # set up the servo pins
-# microbit.pin1.set_analog_period(20)
-# microbit.pin2.set_analog_period(20)
 sv1 = Servo(microbit.pin1, min_us=1000, max_us=2000)
 sv2 = Servo(microbit.pin2, min_us=1000, max_us=2000)
 np = neopixel.NeoPixel(microbit.pin0, 5)
-demo = MicrobitServoDemo()
+demo = MicrobitServoDemo(sv1, sv2, np)
 demo.reset()
+demo.np.show()
 
 while True:
     # Check for messages from pi
-    if microbit.uart.any():
+    """if microbit.uart.any():
             pi_message = str(microbit.uart.readall()).replace(
                 '\\n', '').replace('\'', '')
             if 'RSSI' in pi_message:
                 # get rssi
-                rssi = float(pi_message.replace('RSSI=',''))
+         
+       rssi = float(pi_message.replace('RSSI=',''))
                 # transform rssi into number for antenna spread
-                
-    if microbit.button_a.is_pressed() and microbit.button_b.is_pressed():
-        demo.reset()
-    elif microbit.button_a.is_pressed():
-        strength = randint(0, len(np)-1)
-        demo.initdetectionanimation()
-        demo.led_pulse(strength)
-        demo.adjust_antenna_sweep(sv1, 0)
-        demo.adjust_antenna_sweep(sv2, 180)   
-        microbit.sleep(1000)
-        demo.led_fade(strength)
-
+     """           
+    
+    if microbit.button_a.is_pressed():
+        
+        demo.antenna_max()
     elif microbit.button_b.is_pressed():
-        demo.initdetectionanimation()
-        demo.adjust_antenna_sweep(sv1, 180)
-        demo.adjust_antenna_sweep(sv2, 0)
-        microbit.sleep(1000)
+        demo.antenna_min()
+    

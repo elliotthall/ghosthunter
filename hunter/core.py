@@ -21,8 +21,72 @@ EVENT_UPDATE_MESSAGE_HEADER = u'available_events'
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
 
-
 # This is the base object from which all hunter devices should be derived.
+
+"""
+Hunter core library classes
+
+
+Bluetooth Mixin
+
+- Add query bluetooth low energy to event loop 
+
+Microbit Mixin
+
+-Send message to microbit over serial
+-Receive seriall message from microbit
+-parse microbit message
+
+"""
+
+
+class Hunter(object):
+    """
+    Hunter
+
+    - Run perpetual event loop
+    - Communicate with server via websockets
+    - device recharge
+
+    """
+    # The main event loop for the device
+    event_loop = None
+    # The websocket for communication with the hunt server
+    websocket = None
+    # How long the device rests before ready to detect again (in seconds)
+    device_interval = 0
+    devive_ready = False
+
+    def __init__(self, **kwargs):
+        self.event_loop = asyncio.get_event_loop()
+
+    def get_tasks(self):
+        return [self.device_recharge()]
+
+    # Overwrite this with your object's bootup
+    # but remember to toggle ready and broadcast
+    async def bootup(self):
+        """ Set up event loop and boot up"""
+        print ("Starting up...")
+        # start the event loop
+        for task in self.get_tasks():
+            self.event_loop.create_task(task)
+        self.device_ready = True
+        self.event_loop.run_forever()
+
+    def shutdown(self):
+        print("Shutting down...")
+        self.event_loop.stop()
+        self.event_loop.close()
+
+
+    async def device_recharge(device):
+        """ Time device 'cooldown' after detection attempt """
+        if device.device_ready == False:
+            print ("Recharging...")
+            await time.sleep(device.device_interval)
+            device.device_ready = True
+            print("Recharged and ready")
 
 
 class HunterBase(object):
@@ -146,17 +210,16 @@ class HunterBase(object):
     def set_device_ready(self):
         self.device_ready = True
 
-
-"""
-Subclass of hunter that uses wifi and/or BLE for positioning
-
-
-- Recharge (if previously activated)
-- Determine location
-    - Send change to server if changed
-- Listen for new information from server
-
-"""
+    """
+    Subclass of hunter that uses wifi and/or BLE for positioning
+    
+    
+    - Recharge (if previously activated)
+    - Determine location
+        - Send change to server if changed
+    - Listen for new information from server
+    
+    """
 
 
 class HunterRSSI(HunterBase):
@@ -201,12 +264,12 @@ class HunterRSSI(HunterBase):
         # instantiate when ready
 
     def update_fingerprint_database(self, response):
-            if response != "0":
-                # Update the database
-                new_database = json.loads(response)
-                self.fingerprint_timestamp = new_database['timestamp']
-                self.fingerprints = new_database['fingerprints']
-            return True
+        if response != "0":
+            # Update the database
+            new_database = json.loads(response)
+            self.fingerprint_timestamp = new_database['timestamp']
+            self.fingerprints = new_database['fingerprints']
+        return True
 
     # listen on websocket for updates from server
     async def listen_server(self):
@@ -226,7 +289,6 @@ class HunterRSSI(HunterBase):
 
     def hunt_begin(self):
         self.hunt_begun = True
-
 
     def hunt_ended(self):
         # todo cooldown, send final data state?
@@ -250,7 +312,6 @@ class HunterRSSI(HunterBase):
             ready = yield from asyncio.wait_for(self.getwebsocket(), 10, loop=self.loop)
         except asyncio.TimeoutError:
             raise asyncio.TimeoutError("Connection to hunt server failed!")
-
 
         asyncio.ensure_future(self.get_async_events(), loop=self.loop)
 
