@@ -2,9 +2,19 @@ import unittest
 import unittest.mock as mock
 import asyncio
 
-from hunter.core import HunterRSSI
+from hunter.core import HunterRSSI, Hunter
 from local import SKIP_WEBSOCKET
 
+class Hunter(unittest.TestCase):
+    def setUp(self):
+        self. hunter = Hunter()
+
+    def tearDown(self):
+        self.hunter.shutdown()
+
+    def test_server_config(self):
+        result = self.hunter.server_config()
+        self.assertEqual(result, True)
 
 class HunterRSSITest(unittest.TestCase):
 

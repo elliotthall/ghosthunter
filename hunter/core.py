@@ -78,6 +78,13 @@ class Hunter(object):
         for command in self.extra_device_functions():
             self.command_queue.append(command)
 
+    async def server_config(self):
+        """ Establish server connection, get extra config if necessary"""
+        await self.get_ghost_server_socket()
+        # todo extra server vars?
+        return True
+
+
     async def get_ghost_server_socket(self):
         """ Instantiate connection to ghost server, or return if ready"""
         # todo add error trapping timeouts etc.
@@ -108,12 +115,12 @@ class Hunter(object):
     def bootup(self):
         """ Set up event loop and boot up"""
         print("Starting up...")
-        # start the main event loop
-        self.device_ready = True
         # self.event_loop.run_until_complete(self.device_cycle())
-        self.event_loop.run_until_complete(self.get_ghost_server_socket())
+        self.event_loop.run_until_complete(self.server_config())
         for command in self.command_queue:
             asyncio.ensure_future(command)
+        # start the main event loop
+        self.device_ready = True
         self.event_loop.run_forever()
 
     def shutdown(self):
