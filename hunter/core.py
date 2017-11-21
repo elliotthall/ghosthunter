@@ -1,18 +1,14 @@
 import asyncio
-import json
 import logging
-import re
-import shlex
-import subprocess
 import time
-from operator import itemgetter
 
 import websockets
-#from bluepy.btle import Scanner
 
 from local import (
     HUNT_URL
 )
+
+# from bluepy.btle import Scanner
 
 HUNT_BEGIN_MESSAGE = u'HUNT_BEGIN'
 HUNT_END_MESSAGE = u'HUNT_END'
@@ -54,8 +50,14 @@ class Hunter(object):
     - get input from device hardware
 
     """
+    # This device's unique id
+    uid = ''
+    # uri for ghost hunt server
+    hunt_url = ''
+
     # The main event loop for the device
     event_loop = None
+
     # The websocket for communication with the hunt server
     websocket = None
     # How long the device rests before ready to detect again (in seconds)
@@ -63,42 +65,35 @@ class Hunter(object):
     # Is the device ready to be triggered?
     devive_ready = False
     # Device commands that can be triggered
-    commands = {'SHUTDOWN':'SHUTDOWN'}
+    commands = {'SHUTDOWN': 'SHUTDOWN'}
     command_queue = list()
-
 
     def __init__(self, **kwargs):
         self.event_loop = asyncio.get_event_loop()
 
-    async def device_cycle(self):
-        """ Perform a full cycle of device's functions
-        
-        This is the main function loop
-        """
-
-        while True:
-            # Reset commands
-            # Gather command messages from hardware / server
-            await self.get_device_input()
-            await self.get_server_messages()
-            await self.extra_device_functions()
-            if (self.commands['SHUTDOWN'] in self.command_queue):
-                break
-        self.shutdown()
-        return 1
-
+    async def get_ghost_server_socket(self):
+        """ Instantiate connection to ghost server, or return if ready"""
+        # todo add error trapping timeouts etc.
+        if self.websocket is None:
+            self.websocket = await websockets.connect(self.hunt_url)
+        return self.websocket
 
     async def get_device_input(self):
         """ Check for input from device e.g. buttons """
         return None
 
     async def get_server_messages(self):
+        print("Get server messages...")
         """ Retrieve any messages sent to device from server"""
+        websocket = await self.get_ghost_server_socket()
+        message = await websocket.recv()
+        print (message)
         return None
 
     async def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
+        print("extra device functions")
         return None
 
 
@@ -106,22 +101,26 @@ class Hunter(object):
     # but remember to toggle ready and broadcast
     def bootup(self):
         """ Set up event loop and boot up"""
-        print ("Starting up...")
-        # todo get inits here or dif function?
-
+        print("Starting up...")
         # start the main event loop
         self.device_ready = True
-        self.event_loop.run_until_complete(self.device_cycle())
+        # self.event_loop.run_until_complete(self.device_cycle())
+        self.event_loop.run_until_complete(self.get_ghost_server_socket())
+        asyncio.ensure_future(self.get_device_input())
+        asyncio.ensure_future(self.extra_device_functions())
+        asyncio.ensure_future(self.get_server_messages())
+        self.event_loop.run_forever()
 
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
         print("Shutting down...")
-
-
+        asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        self.event_loop.stop()
+        self.event_loop.close()
 
     async def trigger(self):
         """ Time device 'cooldown' after detection attempt """
-        print ("triggering...")
+        print("triggering...")
         await asyncio.sleep(self.device_interval)
         self.device_ready = True
         print("Recharged and ready")
@@ -129,8 +128,6 @@ class Hunter(object):
 
 
 class HunterBase(object):
-    # This device's unique id
-    uid = ''
     # The device's type name. e.g. radar
     device_type = ''
 
@@ -259,7 +256,6 @@ class HunterBase(object):
     - Listen for new information from server
     
     """
-
 
 # class HunterRSSI(HunterBase):
 #     navigator_name = 'RSSI'
