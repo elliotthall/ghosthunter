@@ -6,9 +6,10 @@ class HunterTest(Hunter):
 
     async def get_device_input(self):
         print('Getting input...')
-        await asyncio.sleep(self.device_interval)
+        await asyncio.sleep(3)
         print ('Order shutdown...')
-        return self.commands['SHUTDOWN']
+        self.command_queue.append(self.commands['SHUTDOWN'])
+        return None
 
 if __name__ == '__main__':
     hunter = HunterTest()

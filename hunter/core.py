@@ -43,10 +43,15 @@ Microbit Mixin
 class Hunter(object):
     """
     Hunter
+    
+    The base class for all hunter devices.
+    Runs a perpeutal event loop on the producer/consumer model.
+    Commands are added to the command_queue from server messages or hardware input
+    And consumed by device_specific functions in extra_device_functions
 
     - Run perpetual event loop
     - Communicate with server via websockets
-    - device recharge
+    - get input from device hardware
 
     """
     # The main event loop for the device
@@ -55,8 +60,11 @@ class Hunter(object):
     websocket = None
     # How long the device rests before ready to detect again (in seconds)
     device_interval = 0
+    # Is the device ready to be triggered?
     devive_ready = False
+    # Device commands that can be triggered
     commands = {'SHUTDOWN':'SHUTDOWN'}
+    command_queue = list()
 
 
     def __init__(self, **kwargs):
@@ -67,28 +75,31 @@ class Hunter(object):
         
         This is the main function loop
         """
+
         while True:
-            input_message = await self.get_device_input()
-            if (input_message == self.commands['SHUTDOWN']):
+            # Reset commands
+            # Gather command messages from hardware / server
+            await self.get_device_input()
+            await self.get_server_messages()
+            await self.extra_device_functions()
+            if (self.commands['SHUTDOWN'] in self.command_queue):
                 break
-            # self.get_server_messages()
-            # self.extra_device_functions()
         self.shutdown()
         return 1
 
 
     async def get_device_input(self):
         """ Check for input from device e.g. buttons """
-        pass
+        return None
 
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
-        pass
+        return None
 
     async def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        pass
+        return None
 
 
     # Overwrite this with your object's bootup
