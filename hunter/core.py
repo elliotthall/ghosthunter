@@ -70,6 +70,13 @@ class Hunter(object):
 
     def __init__(self, **kwargs):
         self.event_loop = asyncio.get_event_loop()
+        self.command_queue = [
+            self.get_device_input(),
+            self.get_server_messages()
+        ]
+        # Add device specific functionality
+        for command in self.extra_device_functions():
+            self.command_queue.append(command)
 
     async def get_ghost_server_socket(self):
         """ Instantiate connection to ghost server, or return if ready"""
@@ -90,10 +97,9 @@ class Hunter(object):
         print (message)
         return None
 
-    async def extra_device_functions(self):
+    def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        print("extra device functions")
         return None
 
 
@@ -106,9 +112,8 @@ class Hunter(object):
         self.device_ready = True
         # self.event_loop.run_until_complete(self.device_cycle())
         self.event_loop.run_until_complete(self.get_ghost_server_socket())
-        asyncio.ensure_future(self.get_device_input())
-        asyncio.ensure_future(self.extra_device_functions())
-        asyncio.ensure_future(self.get_server_messages())
+        for command in self.command_queue:
+            asyncio.ensure_future(command)
         self.event_loop.run_forever()
 
     def shutdown(self):
