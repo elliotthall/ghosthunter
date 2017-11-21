@@ -56,37 +56,65 @@ class Hunter(object):
     # How long the device rests before ready to detect again (in seconds)
     device_interval = 0
     devive_ready = False
+    commands = {'SHUTDOWN':'SHUTDOWN'}
+
 
     def __init__(self, **kwargs):
         self.event_loop = asyncio.get_event_loop()
 
-    def get_tasks(self):
-        return [self.device_recharge()]
+    async def device_cycle(self):
+        """ Perform a full cycle of device's functions
+        
+        This is the main function loop
+        """
+        while True:
+            input_message = await self.get_device_input()
+            if (input_message == self.commands['SHUTDOWN']):
+                break
+            # self.get_server_messages()
+            # self.extra_device_functions()
+        self.shutdown()
+        return 1
+
+
+    async def get_device_input(self):
+        """ Check for input from device e.g. buttons """
+        pass
+
+    async def get_server_messages(self):
+        """ Retrieve any messages sent to device from server"""
+        pass
+
+    async def extra_device_functions(self):
+        """ Override with device-specific extra functions 
+        you want to add to the loop"""
+        pass
+
 
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
-    async def bootup(self):
+    def bootup(self):
         """ Set up event loop and boot up"""
         print ("Starting up...")
-        # start the event loop
-        for task in self.get_tasks():
-            self.event_loop.create_task(task)
+        # todo get inits here or dif function?
+
+        # start the main event loop
         self.device_ready = True
-        self.event_loop.run_forever()
+        self.event_loop.run_until_complete(self.device_cycle())
 
     def shutdown(self):
+        """ Perform any final tasks such as logging before shutting down """
         print("Shutting down...")
-        self.event_loop.stop()
-        self.event_loop.close()
 
 
-    async def device_recharge(device):
+
+    async def trigger(self):
         """ Time device 'cooldown' after detection attempt """
-        if device.device_ready == False:
-            print ("Recharging...")
-            await time.sleep(device.device_interval)
-            device.device_ready = True
-            print("Recharged and ready")
+        print ("triggering...")
+        await asyncio.sleep(self.device_interval)
+        self.device_ready = True
+        print("Recharged and ready")
+        return True
 
 
 class HunterBase(object):
