@@ -100,7 +100,7 @@ class Hunter(object):
     def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        return None
+        return list()
 
 
     # Overwrite this with your object's bootup
