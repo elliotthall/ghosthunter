@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import time
-
+from autobahn.asyncio.websocket import WebSocketClientFactory
+import autobahn.asyncio.websocket as websocket
 import websockets
 
 from local import (
@@ -34,6 +35,12 @@ Microbit Mixin
 -parse microbit message
 
 """
+
+class GhostHunterProtocol(websocket.WebSocketClientProtocol):
+
+    def onOpen(self):
+        """ Send device's uid to server"""
+
 
 
 class Hunter(object):
