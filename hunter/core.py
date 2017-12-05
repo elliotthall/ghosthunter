@@ -1,10 +1,7 @@
 import asyncio
 import logging
 import time
-from autobahn.asyncio.websocket import WebSocketClientFactory
-import autobahn.asyncio.websocket as websocket
 import websockets
-
 from local import (
     HUNT_URL
 )
@@ -35,12 +32,6 @@ Microbit Mixin
 -parse microbit message
 
 """
-
-class GhostHunterProtocol(websocket.WebSocketClientProtocol):
-
-    def onOpen(self):
-        """ Send device's uid to server"""
-
 
 
 class Hunter(object):
@@ -119,7 +110,7 @@ class Hunter(object):
 
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
-    def bootup(self):
+    def bootup(self, run_forever=True):
         """ Set up event loop and boot up"""
         print("Starting up...")
         # self.event_loop.run_until_complete(self.device_cycle())
@@ -128,7 +119,9 @@ class Hunter(object):
             asyncio.ensure_future(command)
         # start the main event loop
         self.device_ready = True
-        self.event_loop.run_forever()
+        if run_forever:
+            self.event_loop.run_forever()
+        return True
 
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
@@ -144,6 +137,8 @@ class Hunter(object):
         self.device_ready = True
         print("Recharged and ready")
         return True
+
+
 
 
 class HunterBase(object):
