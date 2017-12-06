@@ -6,12 +6,13 @@ from local import (
     HUNT_URL
 )
 
+
 # from bluepy.btle import Scanner
 
 HUNT_BEGIN_MESSAGE = u'HUNT_BEGIN'
 HUNT_END_MESSAGE = u'HUNT_END'
 EVENT_UPDATE_MESSAGE_HEADER = u'available_events'
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
 
@@ -66,8 +67,11 @@ class Hunter(object):
     commands = {'SHUTDOWN': 'SHUTDOWN'}
     command_queue = list()
 
-    def __init__(self, **kwargs):
-        self.event_loop = asyncio.get_event_loop()
+    def __init__(self, event_loop=None, **kwargs):
+        if event_loop is None:
+            self.event_loop = asyncio.new_event_loop()
+        else:
+            self.event_loop = event_loop
         self.command_queue = [
             self.get_device_input(),
             self.get_server_messages()
@@ -80,6 +84,7 @@ class Hunter(object):
         """ Establish server connection, get extra config if necessary"""
         await self.get_ghost_server_socket()
         # todo extra server vars?
+        logging.info('Server config retrieved')
         return True
 
 
@@ -112,7 +117,7 @@ class Hunter(object):
     # but remember to toggle ready and broadcast
     def bootup(self, run_forever=True):
         """ Set up event loop and boot up"""
-        print("Starting up...")
+        logging.info("Starting up...")
         # self.event_loop.run_until_complete(self.device_cycle())
         self.event_loop.run_until_complete(self.server_config())
         for command in self.command_queue:
@@ -125,17 +130,18 @@ class Hunter(object):
 
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
-        print("Shutting down...")
+        logging.info("Shutting down...")
         asyncio.gather(*asyncio.Task.all_tasks()).cancel()
         self.event_loop.stop()
         self.event_loop.close()
+        return True
 
     async def trigger(self):
         """ Time device 'cooldown' after detection attempt """
-        print("triggering...")
+        logging.info("triggering...")
         await asyncio.sleep(self.device_interval)
         self.device_ready = True
-        print("Recharged and ready")
+        logging.info("Recharged and ready")
         return True
 
 
