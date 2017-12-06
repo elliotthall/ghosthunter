@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import time
+
 import websockets
+
 from local import (
     HUNT_URL
 )
-
 
 # from bluepy.btle import Scanner
 
@@ -70,6 +71,7 @@ class Hunter(object):
     def __init__(self, event_loop=None, **kwargs):
         if event_loop is None:
             self.event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.event_loop)
         else:
             self.event_loop = event_loop
         self.command_queue = [
@@ -145,6 +147,48 @@ class Hunter(object):
         return True
 
 
+class HunterBLE(Hunter):
+    """ Hunter with added Bluetooth low energy support 
+    """
+    # Bluetooh options
+    # Length of time to scan
+    ble_scan_length = 5.0
+    # Sleep intervals between scans
+    ble_scan_rest = 0.0
+    # filter out devices that don't have this prefix
+    ble_name_prefix = "Kontakt"
+
+
+    # Uses bluepy https://github.com/IanHarvey/bluepy
+    # Scan for bluetooth devices, filter by prefix
+    # to only get relevant beacons, return mac & RSSI
+
+    async def ble_scan(self):
+        scanner = Scanner()
+        return scanner.scan(self.ble_scan_length)
+
+
+    async def get_ble_devices(self):
+        devices = await self.ble_scan()
+        # Clear the last scan
+        ble_devices = list()
+        for dev in devices:
+            # Get name
+            for (adtype, desc, value) in dev.getScanData():
+                if "Local Name" in desc:
+                    name = value
+                    # Does name prefix exist in local name?
+                    if (name is not None and self.ble_name_prefix in name):
+                        ble_devices.append({'MAC': dev.addr,
+                                            "Name": name, "RSSI": dev.rssi})
+        # Use nearest beacon for database
+        nearest = sorted(ble_devices, key=itemgetter('RSSI'), reverse=True)
+        return ble_devices
+
+
+    def extra_device_functions(self):
+        """ Add bluetooth scan to loop"""
+        return [self.get_ble_devices()]
 
 
 class HunterBase(object):
@@ -291,13 +335,6 @@ class HunterBase(object):
 #     # Events that are active and could be detected by device
 #     available_events = None
 #
-#     # Bluetooh options
-#     # Length of time to scan
-#     ble_scan_length = 3.0
-#     # Sleep intervals between scans
-#     ble_scan_rest = 2.0
-#     ble_name_prefix = "Kontakt"
-#     ble_scan_data = {}
 #
 #     # id of the point in fingerprint database of current location
 #     # todo or just ble uid?
@@ -415,9 +452,6 @@ class HunterBase(object):
 #     def get_ble(self):
 #         return self.ble_scan_data
 #
-#     async def ble_scan(self):
-#         scanner = Scanner()
-#         return scanner.scan(self.ble_scan_length)
 #
 #     # Uses bluepy https://github.com/IanHarvey/bluepy
 #     # Scan for bluetooth devices, filter by prefix

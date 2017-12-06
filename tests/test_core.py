@@ -11,6 +11,11 @@ class Hunter_test(unittest.TestCase):
         loop = asyncio.new_event_loop()
         self.hunter = Hunter(loop)
 
+    def test_shutdown(self):
+        result =  self.hunter.shutdown()
+        self.assertEqual(result, True)
+        self.assertEqual(self.hunter.event_loop.is_closed(), True)
+
     def test_boootup(self):
         mock_server_config = asynctest.CoroutineMock(return_value=True)
         mock_return_none = asynctest.CoroutineMock(return_value=None)
@@ -23,6 +28,7 @@ class Hunter_test(unittest.TestCase):
         self.assertEqual(result, True)
         mock_server_config.assert_called_once()
         self.hunter.shutdown()
+
 
     def test_trigger(self):
         result = self.hunter.event_loop.run_until_complete(self.hunter.trigger())

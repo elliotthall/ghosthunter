@@ -5,8 +5,8 @@ from hunter.core import Hunter
 
 class HunterTest(Hunter):
     device_interval = 5
-    #hunt_url = 'ws://demos.kaazing.com/echo'
-    hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
+    hunt_url = 'ws://demos.kaazing.com/echo'
+    #hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
     countdown = 0
     MAC = '78:4f:43:6c:cc:0f'
 
