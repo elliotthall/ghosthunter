@@ -76,6 +76,6 @@ class HunterBLE(Hunter):
         return scan_results
 
 
-def extra_device_functions(self):
-    """ Add bluetooth scan to loop"""
-    return [self.bluetooth_scan()]
+    def extra_device_functions(self):
+        """ Add bluetooth scan to loop"""
+        return [self.bluetooth_scan()]

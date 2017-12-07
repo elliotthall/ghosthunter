@@ -34,7 +34,33 @@ class HunterTest(HunterBLE):
         extras.append(self.ghost_echo())
         return extras
 
+    async def func1(self):
+        print('Func1 begin')
+        await asyncio.sleep(2)
+        print('Func1 end')
+
+    async def func2(self):
+        print('Func2 begin')
+        await asyncio.sleep(5)
+        print('Func2 end')
+
+    async def func3(self):
+        print('Func3 begin')
+        await asyncio.sleep(3)
+        print('Func3 end')
+
+    async def test_heartbeat(self):
+        while True:
+            try:
+                self.func1()
+                self.func2()
+                self.func3()
+            except KeyboardInterrupt:
+                break
+        self.shutdown()
+
+
 
 if __name__ == '__main__':
     hunter = HunterTest()
-    hunter.bootup()
+    hunter.test_heartbeat()
