@@ -180,7 +180,7 @@ class HunterBLE(Hunter):
         devices = None
         try:
             scanner = Scanner()
-            devices = await scanner.scan(self.ble_scan_length)
+            devices = scanner.scan(self.ble_scan_length)
         except BTLEException as blexception:
             logging.error(blexception)
         return devices
