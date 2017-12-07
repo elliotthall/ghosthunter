@@ -62,7 +62,9 @@ class HunterBLE(Hunter):
         :return: 
         """
         while True:
+            print('Begin scan...')
             scan_results = await self.get_ble_devices()
+            print('Scan complete.')
             if len(scan_results) > 0:
                 for scan in scan_results:
                     logging.info("Discovered BLE device {}".format(scan))
