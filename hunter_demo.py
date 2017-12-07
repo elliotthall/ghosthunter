@@ -64,9 +64,8 @@ class HunterTest(HunterBLE):
 # todo wrap ble in executor
 
 if __name__ == '__main__':
-    hunter = HunterTest()
     with asyncio.get_event_loop() as loop:
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            ble_future = executor.submit(hunter.bluetooth_scan)
-            loop.run_until_complete(ble_future)
+            hunter = HunterTest(loop, executor)
+            loop.run_until_complete(hunter.bluetooth_scan())
 

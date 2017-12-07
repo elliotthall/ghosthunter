@@ -25,6 +25,10 @@ class HunterBLE(Hunter):
 
     # Uses bluepy https://github.com/IanHarvey/bluepy
 
+    def __init__(self, event_loop=None, executor=None, **kwargs):
+        super(HunterBLE,self).__init__(event_loop,**kwargs)
+        self.executor = executor
+
 
     def ble_scan(self):
         """ Run ble scan and return found devices"""
@@ -66,13 +70,13 @@ class HunterBLE(Hunter):
         :return: 
         """
         print('Begin scan...')
-        scan_results = await self.get_ble_devices()
+        scan_results = await self.event_loop.run_in_executor(self.executor, self.get_ble_devices())
 
         if len(scan_results) > 0:
             for scan in scan_results:
                 logging.info("Discovered BLE device {}".format(scan))
         # Schedule another scan
-        asyncio.ensure_future(self.get_device_input())
+        #asyncio.ensure_future(self.get_device_input())
         return scan_results
 
 
