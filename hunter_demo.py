@@ -1,6 +1,6 @@
 import asyncio
 import websockets
-from hunter.core import HunterBLE
+from hunter.ble import HunterBLE
 
 
 class HunterTest(HunterBLE):
@@ -32,7 +32,6 @@ class HunterTest(HunterBLE):
         you want to add to the loop"""
         extras = super(HunterTest,self).extra_device_functions()
         extras.append(self.ghost_echo())
-        import pdb; pdb.set_trace()
         return extras
 
 
