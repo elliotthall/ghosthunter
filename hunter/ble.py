@@ -26,7 +26,7 @@ class HunterBLE(Hunter):
     # Uses bluepy https://github.com/IanHarvey/bluepy
 
 
-    async def ble_scan(self):
+    def ble_scan(self):
         """ Run ble scan and return found devices"""
         devices = None
         try:
