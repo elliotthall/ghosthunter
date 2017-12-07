@@ -63,4 +63,5 @@ class HunterTest(HunterBLE):
 
 if __name__ == '__main__':
     hunter = HunterTest()
-    hunter.test_heartbeat()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(hunter.test_heartbeat())
