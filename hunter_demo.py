@@ -1,9 +1,9 @@
 import asyncio
 import websockets
-from hunter.core import Hunter
+from hunter.core import HunterBLE
 
 
-class HunterTest(Hunter):
+class HunterTest(HunterBLE):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
     #hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
@@ -30,7 +30,9 @@ class HunterTest(Hunter):
     def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        return [self.ghost_echo()]
+        extras = super(HunterBLE,self).extra_device_functions()
+        extras.append(self.ghost_echo())
+        return extras
 
 
 if __name__ == '__main__':

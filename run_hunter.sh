@@ -12,7 +12,7 @@ cd $GHOSTHUNT_DIR
 
 # Need to be root to have access to bluetooth
 sudo su root
-source $GHOSTHUNT_DIR/ghosthunter/envs/ghosthunter/bin/activate
+source $GHOSTHUNT_DIR/envs/ghosthunter/bin/activate
 
 
 # run main script
