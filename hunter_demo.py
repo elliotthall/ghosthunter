@@ -30,8 +30,9 @@ class HunterTest(HunterBLE):
     def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        extras = super(HunterBLE,self).extra_device_functions()
+        extras = super(HunterTest,self).extra_device_functions()
         extras.append(self.ghost_echo())
+        import pdb; pdb.set_trace()
         return extras
 
 

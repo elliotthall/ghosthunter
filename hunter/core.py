@@ -133,6 +133,9 @@ class Hunter(object):
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
         logging.info("Shutting down...")
+        #todo final report to server?
+        logging.info("Closing websocket...")
+        self.websocket.close()
         asyncio.gather(*asyncio.Task.all_tasks()).cancel()
         self.event_loop.stop()
         self.event_loop.close()
@@ -176,7 +179,7 @@ class HunterBLE(Hunter):
         """ Run ble scan and return found devices"""
         devices = None
         try:
-            scanner = Scanner().withDelegate()
+            scanner = Scanner()
             devices = await scanner.scan(self.ble_scan_length)
         except BTLEException as blexception:
             logging.error(blexception)
