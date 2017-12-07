@@ -1,12 +1,16 @@
-from bluepy.btle import Scanner, BTLEException
-from .core import Hunter
 import logging
+
+from bluepy.btle import Scanner, BTLEException
+import asyncio
+from .core import Hunter
+
 """
 Bluetooth Low Energy version of Ghost Hunter
 Elliott Hall 7/12/2017
 
 Moved to its own file so that core functions can be tested on a Mac
 """
+
 
 class HunterBLE(Hunter):
     """ Hunter with added Bluetooth low energy support 
@@ -61,14 +65,17 @@ class HunterBLE(Hunter):
         Pass to display where?
         :return: 
         """
-        while True:
-            print('Begin scan...')
-            scan_results = await self.get_ble_devices()
-            print('Scan complete.')
-            if len(scan_results) > 0:
-                for scan in scan_results:
-                    logging.info("Discovered BLE device {}".format(scan))
+        print('Begin scan...')
+        scan_results = await self.get_ble_devices()
 
-    def extra_device_functions(self):
-        """ Add bluetooth scan to loop"""
-        return [self.bluetooth_scan()]
+        if len(scan_results) > 0:
+            for scan in scan_results:
+                logging.info("Discovered BLE device {}".format(scan))
+        # Schedule another scan
+        asyncio.ensure_future(self.get_device_input())
+        return scan_results
+
+
+def extra_device_functions(self):
+    """ Add bluetooth scan to loop"""
+    return [self.bluetooth_scan()]
