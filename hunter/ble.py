@@ -1,5 +1,5 @@
 import logging
-
+from concurrent.futures import CancelledError
 from bluepy.btle import Scanner, BTLEException
 import asyncio
 from .core import Hunter
@@ -70,14 +70,19 @@ class HunterBLE(Hunter):
         :return: 
         """
         while True:
-            print('Begin scan...')
-            devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
-            scan_results = self.get_ble_devices(devices)
-            if len(scan_results) > 0:
-                for scan in scan_results:
-                    logging.info("Discovered BLE device {}".format(scan))
-            # writer results to class
-            self.current_ble_devices = scan_results
+            try:
+                print('Begin scan...')
+                devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
+                scan_results = self.get_ble_devices(devices)
+                if len(scan_results) > 0:
+                    for scan in scan_results:
+                        logging.info("Discovered BLE device {}".format(scan))
+                # writer results to class
+                self.current_ble_devices = scan_results
+            except CancelledError:
+                print ("BLE finished")
+                break
+        return True
 
         #return scan_results
 

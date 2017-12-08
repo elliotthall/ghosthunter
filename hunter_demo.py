@@ -1,6 +1,6 @@
 import asyncio
 import concurrent.futures
-
+from concurrent.futures import CancelledError
 from hunter.ble import HunterBLE
 
 
@@ -12,16 +12,20 @@ class HunterTest(HunterBLE):
     MAC = '78:4f:43:6c:cc:0f'
 
     async def get_device_input(self):
-        print('Getting input...')
-        await asyncio.sleep(3)
-        if self.countdown == 2:
-            print('Order shutdown...')
-            self.command_queue.append(self.COMMAND_SHUTDOWN)
-            return None
-        else:
-            print("Again")
-            self.countdown += 1
-            asyncio.ensure_future(self.get_device_input())
+        while True:
+            try:
+                print('Getting input...')
+                await asyncio.sleep(3)
+                if self.countdown == 2:
+                    print('Order shutdown...')
+                    self.command_queue.append(self.COMMAND_SHUTDOWN)
+                    return None
+                else:
+                    print("Again")
+                    self.countdown += 1
+                    asyncio.ensure_future(self.get_device_input())
+            except CancelledError:
+                break
         return None
 
     async def ghost_echo(self):

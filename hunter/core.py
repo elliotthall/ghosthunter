@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 import websockets
-
+from concurrent.futures import CancelledError
 
 from local import (
     HUNT_URL
@@ -142,8 +142,6 @@ class Hunter(object):
         logging.info("Closing websocket...")
         self.websocket.close()
         asyncio.gather(*asyncio.Task.all_tasks()).cancel()
-        self.event_loop.stop()
-        self.event_loop.close()
         return True
 
     async def trigger(self):
@@ -160,15 +158,20 @@ class Hunter(object):
         commands in while loop should be ordered by priority
         """
         while True:
-            # Are there waiting commands?
-            if len(self.command_queue) > 0:
-                # Parse commands
-                if self.COMMAND_SHUTDOWN in self.command_queue:
-                    self.shutdown()
-                elif self.COMMAND_TRIGGER in self.command_queue:
-                    self.command_queue.remove(self.COMMAND_TRIGGER)
-                    self.trigger()
-            await asyncio.sleep(0.1)
+            try:
+                # Are there waiting commands?
+                if len(self.command_queue) > 0:
+                    # Parse commands
+                    if self.COMMAND_SHUTDOWN in self.command_queue:
+                        self.shutdown()
+                    elif self.COMMAND_TRIGGER in self.command_queue:
+                        self.command_queue.remove(self.COMMAND_TRIGGER)
+                        self.trigger()
+                await asyncio.sleep(0.1)
+            except CancelledError:
+                print("execute_commands cancelled")
+                break
+        return True
 
 
 
