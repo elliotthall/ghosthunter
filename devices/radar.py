@@ -1,5 +1,4 @@
 import logging
-
 import serial
 
 from hunter.core import HunterRSSI

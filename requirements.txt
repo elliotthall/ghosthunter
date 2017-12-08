@@ -5,3 +5,4 @@ git+https://github.com/IanHarvey/bluepy.git
 pyserial
 pytest
 asynctest
+pyserial_asyncio
