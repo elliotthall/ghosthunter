@@ -168,7 +168,7 @@ class Hunter(object):
                 elif self.COMMAND_TRIGGER in self.command_queue:
                     self.command_queue.remove(self.COMMAND_TRIGGER)
                     self.trigger()
-            asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
 
 
 
