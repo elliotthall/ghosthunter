@@ -30,7 +30,6 @@ class HunterTest(HunterBLE):
         return None
 
     async def ghost_echo(self):
-        websocket = await self.get_ghost_server_socket()
         await websocket.send('GHOST!')
         return None
 
@@ -38,7 +37,7 @@ class HunterTest(HunterBLE):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
         extras = super(HunterTest, self).extra_device_functions()
-
+        extras.append(self.ghost_echo())
         return extras
 
 
