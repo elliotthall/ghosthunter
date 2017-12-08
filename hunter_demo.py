@@ -13,9 +13,9 @@ class HunterTest(HunterBLE):
 
     async def get_device_input(self):
         countdown = 0
+        print('Getting input...')
         while True:
             try:
-                print('Getting input...')
                 await asyncio.sleep(3)
                 if countdown == 2:
                     print('Order shutdown...')
@@ -49,9 +49,13 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterTest(loop, executor)
+        websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
+        hunter.websocket = websocket
         try:
             hunter.bootup()
         finally:
             loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+            websocket.close()
+            loop.run_until_complete(websocket.has_closed())
             loop.close()
 

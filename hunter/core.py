@@ -100,9 +100,8 @@ class Hunter(object):
     async def get_ghost_server_socket(self):
         """ Instantiate connection to ghost server, or return if ready"""
         # todo add error trapping timeouts etc.
-        if self.websocket is None:
-            self.websocket = await websockets.connect(self.hunt_url)
-        return self.websocket
+        websocket = await websockets.connect(self.hunt_url)
+        return websocket
 
     async def get_device_input(self):
         """ Check for input from device e.g. buttons """
@@ -111,14 +110,14 @@ class Hunter(object):
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
         print("Get server messages...")
-        async with websockets.connect(self.hunt_url) as websocket:
-            while True:
-                try:
-                    message = await websocket.recv()
-                    print(message)
-                except CancelledError:
-                    print("socket cancelled")
-                    break
+
+        while True:
+            try:
+                message = await self.websocket.recv()
+                print(message)
+            except CancelledError:
+                print("socket cancelled")
+                break
         return None
 
     def extra_device_functions(self):
