@@ -22,6 +22,7 @@ class HunterBLE(Hunter):
     ble_scan_rest = 0.0
     # filter out devices that don't have this prefix
     ble_name_prefix = "Kontakt"
+    current_ble_devices = list()
 
     # Uses bluepy https://github.com/IanHarvey/bluepy
 
@@ -68,17 +69,17 @@ class HunterBLE(Hunter):
         Pass to display where?
         :return: 
         """
-        print('Begin scan...')
-        devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
-        import pdb; pdb.set_trace()
-        scan_results = self.get_ble_devices(devices)
+        while True:
+            print('Begin scan...')
+            devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
+            scan_results = self.get_ble_devices(devices)
+            if len(scan_results) > 0:
+                for scan in scan_results:
+                    logging.info("Discovered BLE device {}".format(scan))
+            # writer results to class
+            self.current_ble_devices = scan_results
 
-        if len(scan_results) > 0:
-            for scan in scan_results:
-                logging.info("Discovered BLE device {}".format(scan))
-        # Schedule another scan
-        #asyncio.ensure_future(self.get_device_input())
-        return scan_results
+        #return scan_results
 
 
     def extra_device_functions(self):

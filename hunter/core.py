@@ -65,8 +65,13 @@ class Hunter(object):
     # Is the device ready to be triggered?
     devive_ready = False
     # Device commands that can be triggered
-    commands = {'SHUTDOWN': 'SHUTDOWN'}
-    command_queue = list()
+    COMMAND_SHUTDOWN = 'SHUTDOWN'
+    COMMAND_TRIGGER = 'TRIGGER'
+
+    # async events to run in loop
+    event_queue = list()
+    # Any commands received by socket, I/O e.g. trigger scan
+    command_queue =list()
 
     def __init__(self, event_loop=None, **kwargs):
         if event_loop is None:
@@ -74,13 +79,15 @@ class Hunter(object):
             asyncio.set_event_loop(self.event_loop)
         else:
             self.event_loop = event_loop
-        self.command_queue = [
+        self.event_queue = [
             self.get_device_input(),
             self.get_server_messages()
         ]
         # Add device specific functionality
         for command in self.extra_device_functions():
-            self.command_queue.append(command)
+            self.event_queue.append(command)
+        # Last, add the command parser
+        self.event_queue.append(self.execute_commands())
 
     async def server_config(self):
         """ Establish server connection, get extra config if necessary"""
@@ -120,7 +127,7 @@ class Hunter(object):
         logging.info("Starting up...")
         # self.event_loop.run_until_complete(self.device_cycle())
         self.event_loop.run_until_complete(self.server_config())
-        for command in self.command_queue:
+        for command in self.event_queue:
             asyncio.ensure_future(command)
         # start the main event loop
         self.device_ready = True
@@ -146,6 +153,23 @@ class Hunter(object):
         self.device_ready = True
         logging.info("Recharged and ready")
         return True
+
+    async def execute_commands(self):
+        """ Main function to tell the hunter device to 'do something'
+        based on notifications from bluetooth, user input, sockets etc.
+        commands in while loop should be ordered by priority
+        """
+        while True:
+            # Are there waiting commands?
+            if len(self.command_queue) > 0:
+                # Parse commands
+                if self.COMMAND_SHUTDOWN in self.command_queue:
+                    self.shutdown()
+                elif self.COMMAND_TRIGGER in self.command_queue:
+                    self.command_queue.remove(self.COMMAND_TRIGGER)
+                    self.trigger()
+            asyncio.sleep(0.1)
+
 
 
 
