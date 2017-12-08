@@ -165,7 +165,8 @@ class Hunter(object):
                 if len(self.command_queue) > 0:
                     # Parse commands
                     if self.COMMAND_SHUTDOWN in self.command_queue:
-                        self.shutdown()
+                        #self.shutdown()
+                        break
                     elif self.COMMAND_TRIGGER in self.command_queue:
                         self.command_queue.remove(self.COMMAND_TRIGGER)
                         self.trigger()
@@ -173,6 +174,9 @@ class Hunter(object):
             except CancelledError:
                 print("execute_commands cancelled")
                 break
+        print ("commands done shutting down")
+        await asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        self.event_loop.stop()
         return True
 
 

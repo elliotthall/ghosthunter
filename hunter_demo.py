@@ -76,6 +76,5 @@ if __name__ == '__main__':
         try:
             hunter.bootup()
         finally:
-            loop.stop()
             loop.close()
 
