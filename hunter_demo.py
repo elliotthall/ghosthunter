@@ -30,7 +30,7 @@ class HunterTest(HunterBLE):
         return None
 
     async def ghost_echo(self):
-        await websocket.send('GHOST!')
+        await self.websocket.send('GHOST!')
         return None
 
     def extra_device_functions(self):
@@ -41,10 +41,7 @@ class HunterTest(HunterBLE):
         return extras
 
 
-# todo command_consumer
-# todo wrap ble in executor
-
-if __name__ == '__main__':
+def main():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterTest(loop, executor)
@@ -57,3 +54,6 @@ if __name__ == '__main__':
             loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
             loop.close()
 
+
+if __name__ == '__main__':
+    main()
