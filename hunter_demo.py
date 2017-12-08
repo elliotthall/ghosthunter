@@ -8,24 +8,25 @@ class HunterTest(HunterBLE):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
     # hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
-    countdown = 0
+
     MAC = '78:4f:43:6c:cc:0f'
 
     async def get_device_input(self):
+        countdown = 0
         while True:
             try:
                 print('Getting input...')
                 await asyncio.sleep(3)
-                if self.countdown == 2:
+                if countdown == 2:
                     print('Order shutdown...')
                     self.command_queue.append(self.COMMAND_SHUTDOWN)
-                    return None
-                else:
-                    print("Again")
-                    self.countdown += 1
-                    asyncio.ensure_future(self.get_device_input())
+                    countdown += 1
+                elif countdown < 2:
+                    print("Input Again")
+                    countdown += 1
             except CancelledError:
                 break
+        print("Input finished")
         return None
 
     async def ghost_echo(self):

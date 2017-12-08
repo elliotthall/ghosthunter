@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import time
-import websockets
 from concurrent.futures import CancelledError
+
+import websockets
 
 from local import (
     HUNT_URL
@@ -71,7 +72,7 @@ class Hunter(object):
     # async events to run in loop
     event_queue = list()
     # Any commands received by socket, I/O e.g. trigger scan
-    command_queue =list()
+    command_queue = list()
 
     def __init__(self, event_loop=None, **kwargs):
         if event_loop is None:
@@ -110,13 +111,14 @@ class Hunter(object):
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
         print("Get server messages...")
-        while True:
-            try:
-                websocket = await self.get_ghost_server_socket()
-                message = await websocket.recv()
-                print(message)
-            except CancelledError:
-                break
+        async with websockets.connect(self.hunt_url) as websocket:
+            while True:
+                try:
+                    message = await websocket.recv()
+                    print(message)
+                except CancelledError:
+                    print("socket cancelled")
+                    break
         return None
 
     def extra_device_functions(self):
@@ -142,10 +144,10 @@ class Hunter(object):
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
         logging.info("Shutting down...")
-        #todo final report to server?
+        # todo final report to server?
         logging.info("Closing websocket...")
         self.websocket.close()
-        #asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        # asyncio.gather(*asyncio.Task.all_tasks()).cancel()
         for task in asyncio.Task.all_tasks():
             task.cancel()
         return True
@@ -163,13 +165,14 @@ class Hunter(object):
         based on notifications from bluetooth, user input, sockets etc.
         commands in while loop should be ordered by priority
         """
+
         while True:
             try:
                 # Are there waiting commands?
                 if len(self.command_queue) > 0:
                     # Parse commands
                     if self.COMMAND_SHUTDOWN in self.command_queue:
-                        #self.shutdown()
+                        # self.shutdown()
                         break
                     elif self.COMMAND_TRIGGER in self.command_queue:
                         self.command_queue.remove(self.COMMAND_TRIGGER)
@@ -178,13 +181,12 @@ class Hunter(object):
             except CancelledError:
                 print("execute_commands cancelled")
                 break
-        print ("commands done shutting down")
+        print("commands done shutting down")
         for task in asyncio.Task.all_tasks():
             task.cancel()
+
         self.event_loop.stop()
         return True
-
-
 
 
 class HunterBase(object):
