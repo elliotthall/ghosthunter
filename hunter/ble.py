@@ -40,12 +40,11 @@ class HunterBLE(Hunter):
             logging.error(blexception)
         return devices
 
-    async def get_ble_devices(self):
+    def get_ble_devices(self, devices):
         """ Scan for bluetooth devices
          filter by prefix to only get relevant beacons
          :return: device list with dict {name, mac & RSSI} 
         """
-        devices = await self.ble_scan()
         ble_devices = list()
         if devices:
             for dev in devices:
@@ -70,7 +69,9 @@ class HunterBLE(Hunter):
         :return: 
         """
         print('Begin scan...')
-        scan_results = await self.event_loop.run_in_executor(self.executor, self.get_ble_devices())
+        devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
+        import pdb; pdb.set_trace()
+        scan_results = self.get_ble_devices(devices.result())
 
         if len(scan_results) > 0:
             for scan in scan_results:

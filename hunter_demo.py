@@ -1,13 +1,13 @@
 import asyncio
-import websockets
 import concurrent.futures
+
 from hunter.ble import HunterBLE
 
 
 class HunterTest(HunterBLE):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
-    #hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
+    # hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
     countdown = 0
     MAC = '78:4f:43:6c:cc:0f'
 
@@ -31,7 +31,7 @@ class HunterTest(HunterBLE):
     def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
-        extras = super(HunterTest,self).extra_device_functions()
+        extras = super(HunterTest, self).extra_device_functions()
         extras.append(self.ghost_echo())
         return extras
 
@@ -60,12 +60,12 @@ class HunterTest(HunterBLE):
                 break
         self.shutdown()
 
+
 # todo command_consumer
 # todo wrap ble in executor
 
 if __name__ == '__main__':
-    with asyncio.get_event_loop() as loop:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            hunter = HunterTest(loop, executor)
-            loop.run_until_complete(hunter.bluetooth_scan())
-
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        hunter = HunterTest(loop, executor)
+        loop.run_until_complete(hunter.bluetooth_scan())
