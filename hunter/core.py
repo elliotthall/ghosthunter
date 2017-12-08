@@ -141,7 +141,9 @@ class Hunter(object):
         #todo final report to server?
         logging.info("Closing websocket...")
         self.websocket.close()
-        asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        #asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
         return True
 
     async def trigger(self):

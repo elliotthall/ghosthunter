@@ -73,4 +73,9 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterTest(loop, executor)
-        hunter.bootup()
+        try:
+            hunter.bootup()
+        finally:
+            loop.stop()
+            loop.close()
+
