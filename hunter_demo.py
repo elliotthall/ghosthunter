@@ -16,7 +16,8 @@ class HunterTest(HunterBLE):
         await asyncio.sleep(3)
         if self.countdown == 2:
             print('Order shutdown...')
-            self.shutdown()
+            self.command_queue.append(self.COMMAND_SHUTDOWN)
+            return None
         else:
             print("Again")
             self.countdown += 1
@@ -68,9 +69,4 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterTest(loop, executor)
-        asyncio.ensure_future(hunter.bluetooth_scan())
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            loop.stop()
-            loop.close()
+        hunter.bootup()
