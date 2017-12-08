@@ -179,7 +179,8 @@ class Hunter(object):
                 print("execute_commands cancelled")
                 break
         print ("commands done shutting down")
-        await asyncio.gather(*asyncio.Task.all_tasks()).cancel()
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
         self.event_loop.stop()
         return True
 
