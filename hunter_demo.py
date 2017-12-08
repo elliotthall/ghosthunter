@@ -68,4 +68,9 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterTest(loop, executor)
-        loop.run_until_complete(hunter.bluetooth_scan())
+        asyncio.ensure_future(hunter.bluetooth_scan())
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            loop.stop()
+            loop.close()

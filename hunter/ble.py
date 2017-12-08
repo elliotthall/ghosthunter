@@ -71,7 +71,7 @@ class HunterBLE(Hunter):
         print('Begin scan...')
         devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
         import pdb; pdb.set_trace()
-        scan_results = self.get_ble_devices(devices.result())
+        scan_results = self.get_ble_devices(devices)
 
         if len(scan_results) > 0:
             for scan in scan_results:
