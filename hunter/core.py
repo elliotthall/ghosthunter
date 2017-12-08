@@ -108,11 +108,15 @@ class Hunter(object):
         return None
 
     async def get_server_messages(self):
-        print("Get server messages...")
         """ Retrieve any messages sent to device from server"""
-        websocket = await self.get_ghost_server_socket()
-        message = await websocket.recv()
-        print(message)
+        print("Get server messages...")
+        while True:
+            try:
+                websocket = await self.get_ghost_server_socket()
+                message = await websocket.recv()
+                print(message)
+            except CancelledError:
+                break
         return None
 
     def extra_device_functions(self):
