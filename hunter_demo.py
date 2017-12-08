@@ -54,7 +54,7 @@ if __name__ == '__main__':
         try:
             hunter.bootup()
         finally:
-            loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
             loop.run_until_complete(websocket.close())
+            loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
             loop.close()
 
