@@ -29,15 +29,19 @@ class HunterTest(HunterMicrobit):
         print("Input finished")
         return None
 
-    async def ghost_echo(self):
+    async def websocket_echo(self):
         await self.send_server_message('GHOST!')
+        return None
+
+    async def serial_echo(self):
+        await self.send_server_message('HUNT!')
         return None
 
     def extra_device_functions(self):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
         extras = super(HunterTest, self).extra_device_functions()
-        extras.append(self.ghost_echo())
+        extras.append(self.websocket_echo(),self.serial_echo())
         return extras
 
 
