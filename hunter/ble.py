@@ -69,9 +69,10 @@ class HunterBLE(Hunter):
         Pass to display where?
         :return: 
         """
+        logging.info('Bluetooth starting up...')
         while True:
             try:
-                print('Begin scan...')
+
                 devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
                 scan_results = self.get_ble_devices(devices)
                 if len(scan_results) > 0:
@@ -80,7 +81,7 @@ class HunterBLE(Hunter):
                 # writer results to class
                 self.current_ble_devices = scan_results
             except CancelledError:
-                print ("BLE finished")
+                logging.info("Bluetooth finished")
                 break
         return True
 

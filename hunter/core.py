@@ -113,11 +113,30 @@ class Hunter(object):
 
         while True:
             try:
-                message = await self.websocket.recv()
+                message = await asyncio.wait_for(self.websocket.recv(), timeout=20)
                 print(message)
+            except asyncio.TimeoutError:
+                try:
+                    pong_waiter = await self.websocket.ping()
+                    await asyncio.wait_for(pong_waiter, timeout=10)
+                except asyncio.TimeoutError:
+                    # No response to ping in 10 seconds.  Attempt to reconnect
+                    break
             except CancelledError:
                 print("socket cancelled")
                 break
+        return None
+
+    async def send_server_message(self, message):
+        try:
+            await self.websocket.send(message)
+        except asyncio.TimeoutError:
+            # todo reconnect attempt
+            pass
+        except CancelledError:
+            # todo ensure last message attempt if cancelled during shutdown?
+            print("smessage cancelled")
+
         return None
 
     def extra_device_functions(self):
@@ -130,7 +149,6 @@ class Hunter(object):
     def bootup(self, run_forever=True):
         """ Set up event loop and boot up"""
         logging.info("Starting up...")
-        # self.event_loop.run_until_complete(self.device_cycle())
         self.event_loop.run_until_complete(self.server_config())
         for command in self.event_queue:
             asyncio.ensure_future(command)

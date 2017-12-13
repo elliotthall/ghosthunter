@@ -30,7 +30,7 @@ class HunterTest(HunterBLE):
         return None
 
     async def ghost_echo(self):
-        await self.websocket.send('GHOST!')
+        await self.send_server_message('GHOST!')
         return None
 
     def extra_device_functions(self):
