@@ -25,7 +25,8 @@ class HunterMicrobit(HunterBLE):
             return None
 
     async def send_serial_message(self, message):
-        """Send a message to the microbit"""
+        """Send a message to the microbit
+        NOTE: Must be bytestring, terminated with newline"""
         try:
             future = self.event_loop.run_in_executor(
                 self.executor,
