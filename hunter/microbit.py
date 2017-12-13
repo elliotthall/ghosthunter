@@ -31,7 +31,7 @@ class HunterMicrobit(HunterBLE):
                 self.executor,
                 functools.partial(self.serial.write, message)
             )
-            serial = await asyncio.wait_for(future, 30, loop=self.event_loop)
+            await asyncio.wait_for(future, 30, loop=self.event_loop)
         except asyncio.TimeoutError:
             # check serial connection
             if self.serial.is_open is False:
@@ -49,9 +49,9 @@ class HunterMicrobit(HunterBLE):
             try:
                 future = self.event_loop.run_in_executor(
                     self.executor, self.serial.readline())
-                serial = await asyncio.wait_for(
+                message = await asyncio.wait_for(
                     future, 30, loop=self.event_loop)
-                self.parse_microbit_serial_message(serial)
+                self.parse_microbit_serial_message(message)
             except asyncio.TimeoutError:
                 # check serial connection
                 if self.serial.is_open is False:
