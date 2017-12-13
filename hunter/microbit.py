@@ -27,7 +27,10 @@ class HunterMicrobit(HunterBLE):
     async def send_serial_message(self, message):
         """Send a message to the microbit"""
         try:
-            future = self.event_loop.run_in_executor(self.executor, functools.partial(self.serial.write(),message))
+            future = self.event_loop.run_in_executor(
+                self.executor,
+                functools.partial(self.serial.write, message)
+            )
             serial = await asyncio.wait_for(future, 30, loop=self.event_loop)
         except asyncio.TimeoutError:
             # check serial connection
@@ -36,15 +39,18 @@ class HunterMicrobit(HunterBLE):
                 self.connect_serial()
 
     def parse_microbit_serial_message(self, message):
-        """Parse any messages from microbit and add to command queue as necesssary"""
+        """Parse any messages from microbit and 
+        add to command queue as necesssary"""
         pass
 
     async def receive_serial_message(self):
         """ Listen for JSON serial messages, pass to parser"""
         while True:
             try:
-                future = self.event_loop.run_in_executor(self.executor, serial.readline())
-                serial = await asyncio.wait_for(future, 30, loop=self.event_loop)
+                future = self.event_loop.run_in_executor(
+                    self.executor, self.serial.readline())
+                serial = await asyncio.wait_for(
+                    future, 30, loop=self.event_loop)
                 self.parse_microbit_serial_message(serial)
             except asyncio.TimeoutError:
                 # check serial connection
