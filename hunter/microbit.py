@@ -15,9 +15,9 @@ class HunterMicrobit(HunterBLE):
 
     async def connect_serial(self):
         """ Connect to serial over usb"""
-        # todo error trap
         try:
             self.serial = serial.Serial(self.serial_address, 115200, timeout=3)
+            return True
         except asyncio.TimeoutError:
             logging.error("Serial connection failed!")
             raise IOError("Serial connection failed!")

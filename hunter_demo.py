@@ -1,10 +1,10 @@
 import asyncio
 import concurrent.futures
 from concurrent.futures import CancelledError
-from hunter.ble import HunterBLE
+from hunter.microbit import HunterMicrobit
 
 
-class HunterTest(HunterBLE):
+class HunterTest(HunterMicrobit):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
     # hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
@@ -47,6 +47,7 @@ def main():
         hunter = HunterTest(loop, executor)
         websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
         hunter.websocket = websocket
+        hunter.connect_serial()
         try:
             hunter.bootup()
         finally:
