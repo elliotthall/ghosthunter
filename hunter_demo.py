@@ -34,7 +34,7 @@ class HunterTest(HunterMicrobit):
         return None
 
     async def serial_echo(self):
-        await self.send_server_message('HUNT!')
+        await self.send_serial_message('PING\n')
         return None
 
     def extra_device_functions(self):
