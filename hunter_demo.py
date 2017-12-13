@@ -47,7 +47,7 @@ def main():
         hunter = HunterTest(loop, executor)
         websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
         hunter.websocket = websocket
-        hunter.connect_serial()
+        loop.run_until_complete(hunter.connect_serial())
         try:
             hunter.bootup()
         finally:
