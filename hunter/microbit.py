@@ -13,6 +13,9 @@ class HunterMicrobit(HunterBLE):
     serial_address = '/dev/ttyACM0'
     serial = None
 
+    BUTTON_A_PRESSED = "Button A Pressed\n"
+    BUTTON_B_PRESSED = "Button A Pressed\n"
+
     async def connect_serial(self):
         """ Connect to serial over usb"""
         try:
@@ -33,6 +36,8 @@ class HunterMicrobit(HunterBLE):
                 functools.partial(self.serial.write, message)
             )
             await asyncio.wait_for(future, 30, loop=self.event_loop)
+        except TypeError as e:
+            logging.error("Bad microbit sent message: {}".format(e))
         except asyncio.TimeoutError:
             # check serial connection
             if self.serial.is_open is False:
@@ -42,7 +47,11 @@ class HunterMicrobit(HunterBLE):
     def parse_microbit_serial_message(self, message):
         """Parse any messages from microbit and 
         add to command queue as necesssary"""
-        pass
+        command = None
+        if self.BUTTON_A_PRESSED in message:
+            command = self.COMMAND_TRIGGER
+        self.command_queue.append(command)
+        return command
 
     def read_serial(self):
         return self.serial.readline()
@@ -55,6 +64,7 @@ class HunterMicrobit(HunterBLE):
                     self.executor, self.read_serial)
                 message = await asyncio.wait_for(
                     future, 30, loop=self.event_loop)
+                logging.debug("Serial message received: {}".format(message))
                 self.parse_microbit_serial_message(message)
             except asyncio.TimeoutError:
                 # check serial connection
