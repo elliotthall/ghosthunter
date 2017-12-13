@@ -41,7 +41,8 @@ class HunterTest(HunterMicrobit):
         """ Override with device-specific extra functions 
         you want to add to the loop"""
         extras = super(HunterTest, self).extra_device_functions()
-        extras.append(self.websocket_echo(),self.serial_echo())
+        extras.append(self.websocket_echo())
+        extras.append(self.serial_echo())
         return extras
 
 
