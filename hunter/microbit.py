@@ -43,12 +43,15 @@ class HunterMicrobit(HunterBLE):
         add to command queue as necesssary"""
         pass
 
+    def read_serial(self):
+        return self.serial.readline()
+
     async def receive_serial_message(self):
         """ Listen for JSON serial messages, pass to parser"""
         while True:
             try:
                 future = self.event_loop.run_in_executor(
-                    self.executor, self.serial.readline())
+                    self.executor, self.read_serial)
                 message = await asyncio.wait_for(
                     future, 30, loop=self.event_loop)
                 self.parse_microbit_serial_message(message)
