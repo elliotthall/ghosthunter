@@ -8,10 +8,11 @@ import warnings
 
 class Hunter_test(unittest.TestCase):
     def setUp(self):
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         self.hunter = Hunter(loop)
 
     def test_shutdown(self):
+        self.hunter.stop()
         result =  self.hunter.shutdown()
         self.assertEqual(result, True)
         self.assertEqual(self.hunter.event_loop.is_closed(), True)
@@ -27,6 +28,7 @@ class Hunter_test(unittest.TestCase):
             result = self.hunter.bootup(run_forever=False)
         self.assertEqual(result, True)
         mock_server_config.assert_called_once()
+        self.hunter.stop()
         self.hunter.shutdown()
 
 

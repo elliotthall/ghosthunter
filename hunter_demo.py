@@ -56,8 +56,7 @@ def main():
         try:
             hunter.bootup()
         finally:
-            loop.run_until_complete(websocket.close())
-            loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+            hunter.shutdown()
             loop.close()
             hunter.serial.close()
 

@@ -163,10 +163,10 @@ class Hunter(object):
         logging.info("Shutting down...")
         # todo final report to server?
         logging.info("Closing websocket...")
-        self.websocket.close()
-        # asyncio.gather(*asyncio.Task.all_tasks()).cancel()
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
+        import pdb; pdb.set_trace()
+        if self.websocket:
+            self.event_loop.run_until_complete(self.websocket.close())
+        self.event_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
         return True
 
     async def trigger(self):
@@ -177,32 +177,35 @@ class Hunter(object):
         logging.info("Recharged and ready")
         return True
 
+    def stop(self):
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        self.event_loop.stop()
+
     async def execute_commands(self):
         """ Main function to tell the hunter device to 'do something'
         based on notifications from bluetooth, user input, sockets etc.
         commands in while loop should be ordered by priority
         """
-
-        while True:
-            try:
-                # Are there waiting commands?
-                if len(self.command_queue) > 0:
-                    # Parse commands
-                    if self.COMMAND_SHUTDOWN in self.command_queue:
-                        # self.shutdown()
-                        break
-                    elif self.COMMAND_TRIGGER in self.command_queue:
-                        self.command_queue.remove(self.COMMAND_TRIGGER)
-                        self.trigger()
-                await asyncio.sleep(0.1)
-            except CancelledError:
-                print("execute_commands cancelled")
-                break
-        print("commands done shutting down")
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
-
-        self.event_loop.stop()
+        try:
+            while True:
+                try:
+                    # Are there waiting commands?
+                    if len(self.command_queue) > 0:
+                        # Parse commands
+                        if self.COMMAND_SHUTDOWN in self.command_queue:
+                            # self.shutdown()
+                            break
+                        elif self.COMMAND_TRIGGER in self.command_queue:
+                            self.command_queue.remove(self.COMMAND_TRIGGER)
+                            self.trigger()
+                    await asyncio.sleep(0.1)
+                except CancelledError:
+                    print("execute_commands cancelled")
+                    break
+        finally:
+            logging.debug("Stopping main loop")
+            self.stop()
         return True
 
 
