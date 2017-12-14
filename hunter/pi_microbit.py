@@ -13,8 +13,12 @@ class HunterMicrobit(HunterBLE):
     serial_address = '/dev/ttyACM0'
     serial = None
 
+    # Message to pass/receive from Micro:bit
     BUTTON_A_PRESSED = b"B_A_1\n"
     BUTTON_B_PRESSED = b"B_B_1\n"
+    PING = b"PING\n"
+    ECHO = b"ECHO\n"
+
 
     async def connect_serial(self):
         """ Connect to serial over usb"""

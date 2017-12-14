@@ -3,6 +3,6 @@ websockets
 #bluepy
 git+https://github.com/IanHarvey/bluepy.git
 pyserial
+uflash
 pytest
 asynctest
-pyserial_asyncio
