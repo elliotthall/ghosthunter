@@ -1,7 +1,7 @@
 import asyncio
 import concurrent.futures
 from concurrent.futures import CancelledError
-from hunter.microbit import HunterMicrobit
+from hunter.pi_microbit import HunterMicrobit
 
 
 class HunterTest(HunterMicrobit):
@@ -59,6 +59,7 @@ def main():
             loop.run_until_complete(websocket.close())
             loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
             loop.close()
+            hunter.serial.close()
 
 
 if __name__ == '__main__':
