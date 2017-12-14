@@ -42,6 +42,7 @@ class HunterTest(HunterMicrobit):
         you want to add to the loop"""
         extras = super(HunterTest, self).extra_device_functions()
         extras.append(self.websocket_echo())
+        extras.append(self.get_device_input())
         extras.append(self.serial_echo())
         return extras
 

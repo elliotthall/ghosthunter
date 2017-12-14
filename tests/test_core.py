@@ -8,34 +8,52 @@ import warnings
 
 class Hunter_test(unittest.TestCase):
     def setUp(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         self.hunter = Hunter(loop)
+
+    def tearDown(self):
+        if not asyncio.get_event_loop().is_closed():
+            asyncio.get_event_loop().close()
 
     def test_shutdown(self):
         self.hunter.stop()
-        result =  self.hunter.shutdown()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            result =  self.hunter.shutdown()
         self.assertEqual(result, True)
-        self.assertEqual(self.hunter.event_loop.is_closed(), True)
+        self.assertEqual(self.hunter.event_loop.is_running(), False)
 
-    def test_boootup(self):
+    def test_bootup(self):
         mock_server_config = asynctest.CoroutineMock(return_value=True)
         mock_return_none = asynctest.CoroutineMock(return_value=None)
         self.hunter.server_config = mock_server_config
         self.hunter.get_server_messages = mock_return_none
-        self.hunter.get_device_input = mock_return_none
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             result = self.hunter.bootup(run_forever=False)
         self.assertEqual(result, True)
         mock_server_config.assert_called_once()
-        self.hunter.stop()
-        self.hunter.shutdown()
 
 
     def test_trigger(self):
         result = self.hunter.event_loop.run_until_complete(self.hunter.trigger())
         self.assertEqual(result, True)
         self.assertEqual(self.hunter.device_ready, True)
+
+    def test_get_ghost_server_socket(self):
+        mock_return_none = asynctest.CoroutineMock(return_value=None)
+        with asynctest.patch('websockets.connect',new=mock_return_none):
+            result = self.hunter.event_loop.run_until_complete(self.hunter.get_ghost_server_socket())
+        self.assertEqual(result, None)
+
+        # stop Verify all tasks are cancelled
+        # execute_commands
+
+# server_config
+# get_server_messages
+    # send_server_messag
+    # extra_device_functions
 
 
 

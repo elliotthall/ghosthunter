@@ -81,7 +81,6 @@ class Hunter(object):
         else:
             self.event_loop = event_loop
         self.event_queue = [
-            self.get_device_input(),
             self.get_server_messages()
         ]
         # Add device specific functionality
@@ -102,10 +101,6 @@ class Hunter(object):
         # todo add error trapping timeouts etc.
         websocket = await websockets.connect(self.hunt_url)
         return websocket
-
-    async def get_device_input(self):
-        """ Check for input from device e.g. buttons """
-        return None
 
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
@@ -163,10 +158,10 @@ class Hunter(object):
         logging.info("Shutting down...")
         # todo final report to server?
         logging.info("Closing websocket...")
-        import pdb; pdb.set_trace()
         if self.websocket:
             self.event_loop.run_until_complete(self.websocket.close())
         self.event_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+        self.event_loop.stop()
         return True
 
     async def trigger(self):
@@ -180,7 +175,7 @@ class Hunter(object):
     def stop(self):
         for task in asyncio.Task.all_tasks():
             task.cancel()
-        self.event_loop.stop()
+
 
     async def execute_commands(self):
         """ Main function to tell the hunter device to 'do something'
