@@ -4,6 +4,7 @@ from hunter.core import Hunter
 import asynctest
 import asyncio
 import warnings
+import functools
 
 
 class Hunter_test(unittest.TestCase):
@@ -17,7 +18,7 @@ class Hunter_test(unittest.TestCase):
             asyncio.get_event_loop().close()
 
     def test_shutdown(self):
-        self.hunter.stop()
+        self.hunter.cancel_events()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             result =  self.hunter.shutdown()
@@ -47,8 +48,31 @@ class Hunter_test(unittest.TestCase):
             result = self.hunter.event_loop.run_until_complete(self.hunter.get_ghost_server_socket())
         self.assertEqual(result, None)
 
-        # stop Verify all tasks are cancelled
-        # execute_commands
+    def test_stop(self):
+        self.hunter.cancel_events()
+        # Verify all tasks are cancelled
+        for task in asyncio.Task.all_tasks():
+            self.assertEqual(task.cancelled(), True)
+
+    def test_execute_commands(self):
+        async def command_queue(hunter):
+            """ Feed the executor commands to test it"""
+            commands = [hunter.COMMAND_TRIGGER, hunter.COMMAND_SHUTDOWN]
+            try:
+                for command in commands:
+                    hunter.command_queue.append(command)
+                    await asyncio.sleep(0.5)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                hunter.event_loop.stop()
+            return True
+        mock_trigger = asynctest.CoroutineMock(return_value=True)
+        self.hunter.trigger = mock_trigger
+        asyncio.ensure_future(command_queue(self.hunter))
+        asyncio.ensure_future(self.hunter.execute_commands())
+        self.hunter.event_loop.run_forever()
+        mock_trigger.assert_called_once()
 
 # server_config
 # get_server_messages

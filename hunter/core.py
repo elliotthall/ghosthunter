@@ -172,7 +172,7 @@ class Hunter(object):
         logging.info("Recharged and ready")
         return True
 
-    def stop(self):
+    def cancel_events(self):
         for task in asyncio.Task.all_tasks():
             task.cancel()
 
@@ -200,11 +200,11 @@ class Hunter(object):
                     break
         finally:
             logging.debug("Stopping main loop")
-            self.stop()
+            self.cancel_events()
         return True
 
 
-class HunterBase(object):
+class HunterOld(object):
     # The device's type name. e.g. radar
     device_type = ''
 
@@ -231,7 +231,7 @@ class HunterBase(object):
     options = {}
 
     def __init__(self, hunt_context):
-        super(HunterBase, self).__init__()
+        super(HunterOld, self).__init__()
         self.hunt_context = hunt_context
 
     def get_async_events(self):
@@ -251,7 +251,7 @@ class HunterBase(object):
         pass
 
     def shutdown(self):
-        self.event_loop.stop()
+        self.event_loop.cancel_events()
         self.event_loop.close()
 
     # Time device 'cooldown' after detection attempt
@@ -334,7 +334,7 @@ class HunterBase(object):
     
     """
 
-# class HunterRSSI(HunterBase):
+# class HunterRSSI(HunterOld):
 #     navigator_name = 'RSSI'
 #     # Use wifi
 #     # todo shutting this off for now
