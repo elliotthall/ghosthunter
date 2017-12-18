@@ -23,7 +23,7 @@ class HunterBleTest(unittest.TestCase):
 
     def test_extra_device_functions(self):
         extras = self.hunter.extra_device_functions()
-        self.assertListEqual([self.hunter.bluetooth_scan], extras)
+        self.assertListEqual([self.hunter.bluetooth_scan()], extras)
 
 #
 # async def bluetooth_scan(self):
