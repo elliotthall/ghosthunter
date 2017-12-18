@@ -15,6 +15,6 @@ class HunterBleTest(unittest.TestCase):
 
     def test_get_ble_devices(self):
         mock_return_none = asynctest.CoroutineMock(return_value=None)
-        with asynctest.patch('scanner.scan', new=mock_return_none):
+        with asynctest.patch('Scanner.scan', new=mock_return_none):
             result = self.hunter.ble_scan()
             self.assertEqual(result, None)
