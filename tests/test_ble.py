@@ -13,7 +13,7 @@ class HunterBleTest(unittest.TestCase):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.hunter = HunterBLE(loop, executor)
 
-    @patch('hunter.ble.Scanner.scan', autospec=True)
+    @patch('hunter.ble.Scanner.scan')
     def test_get_ble_devices(self, scan_mock):
         self.hunter.ble_scan()
         scan_mock.assert_called_with(self.hunter.ble_scan_length)
@@ -23,7 +23,7 @@ class HunterBleTest(unittest.TestCase):
 
     def test_extra_device_functions(self):
         extras = self.hunter.extra_device_functions()
-        self.assertEqual(self.hunter.bluetooth_scan in extras, True)
+        self.assertListEqual([self.hunter.bluetooth_scan], extras)
 
 #
 # async def bluetooth_scan(self):

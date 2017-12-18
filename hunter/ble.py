@@ -90,4 +90,6 @@ class HunterBLE(Hunter):
 
     def extra_device_functions(self):
         """ Add bluetooth scan to loop"""
-        return [self.bluetooth_scan()]
+        device_functions = super(HunterBLE, self).extra_device_functions()
+        device_functions.append(self.bluetooth_scan())
+        return device_functions
