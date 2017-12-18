@@ -19,14 +19,18 @@ class HunterBleTest(unittest.TestCase):
         scan_mock.assert_called_with(self.hunter.ble_scan_length)
 
     def test_get_ble_devices(self):
-        mock_entry = unittest.mock.create_autospec(ScanEntry)
-        mock_entry.addr='MAC'
-        mock_entry.rssi = -1
-        mock_entry.getScanData.return_value = [('1', "Local Name", self.hunter.ble_name_prefix)]
-        mock_entries = [mock_entry]
+        mock_entry_good = unittest.mock.create_autospec(ScanEntry)
+        mock_entry_good.addr='MAC'
+        mock_entry_good.rssi = -1
+        mock_entry_good.getScanData.return_value = [('1', "Local Name", self.hunter.ble_name_prefix)]
+        mock_entry_bad = unittest.mock.create_autospec(ScanEntry)
+        mock_entry_bad.addr = 'MAC'
+        mock_entry_bad.rssi = -1
+        mock_entry_bad.getScanData.return_value = [('1', "Local Name", 'Filter me out')]
+        mock_entries = [mock_entry_good, mock_entry_bad]
         import pdb; pdb.set_trace()
         result = self.hunter.get_ble_devices(mock_entries)
-        self.assertEqual(len(result),len(mock_entries))
+        self.assertEqual(len(result),1)
 
 
     # def test_extra_device_functions(self):
