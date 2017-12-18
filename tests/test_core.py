@@ -73,7 +73,7 @@ class Hunter_test(unittest.TestCase):
         asyncio.ensure_future(command_queue(self.hunter, commands))
         asyncio.ensure_future(self.hunter.execute_commands())
         self.hunter.event_loop.run_forever()
-        mock_trigger.assert_called_once()
+        mock_trigger.assert_called_with()
 
     def test_parse_server_message(self):
         self.hunter.parse_server_message(self.hunter.MESSAGE_SHUTDOWN)
@@ -89,7 +89,7 @@ class Hunter_test(unittest.TestCase):
                 self.hunter.execute_commands()))
         except asyncio.CancelledError:
             pass
-        mock_websocket.recv.assert_called()
+        mock_websocket.recv.assert_called_with()
 
     def test_send_server_messages(self):
         mock_websocket = asynctest.CoroutineMock()
@@ -101,7 +101,7 @@ class Hunter_test(unittest.TestCase):
             ))
         except asyncio.CancelledError:
             pass
-        mock_websocket.send.assert_called()
+        mock_websocket.send.assert_called_with()
 
 
 
