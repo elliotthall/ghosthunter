@@ -1,5 +1,4 @@
 import microbit
-
 from hunter.pi_microbit import HunterMicrobit
 
 """

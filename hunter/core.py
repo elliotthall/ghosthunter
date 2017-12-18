@@ -18,21 +18,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(mess
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
 
-# This is the base object from which all hunter devices should be derived.
 
 """
 Hunter core library classes
 
+This is the base object from which all hunter devices should be derived.
 
-Bluetooth Mixin
-
-- Add query bluetooth low energy to event loop 
-
-Microbit Mixin
-
--Send message to microbit over serial
--Receive seriall message from microbit
--parse microbit message
 
 """
 
@@ -69,6 +60,10 @@ class Hunter(object):
     COMMAND_SHUTDOWN = 'SHUTDOWN'
     COMMAND_TRIGGER = 'TRIGGER'
 
+    # Shutdown message from server
+    MESSAGE_SHUTDOWN = 'SHUTDOWN'
+
+
     # async events to run in loop
     event_queue = list()
     # Any commands received by socket, I/O e.g. trigger scan
@@ -102,6 +97,13 @@ class Hunter(object):
         websocket = await websockets.connect(self.hunt_url)
         return websocket
 
+    def parse_server_message(self, message):
+        """ Perform commands and modify variables based on server
+        messages"""
+        if self.MESSAGE_SHUTDOWN in message:
+            self.command_queue.append(self.COMMAND_SHUTDOWN)
+        return None
+
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
         print("Get server messages...")
@@ -109,7 +111,8 @@ class Hunter(object):
         while True:
             try:
                 message = await asyncio.wait_for(self.websocket.recv(), timeout=20)
-                print(message)
+                logging.debug(message)
+                self.parse_server_message(message)
             except asyncio.TimeoutError:
                 try:
                     pong_waiter = await self.websocket.ping()
@@ -189,7 +192,6 @@ class Hunter(object):
                     if len(self.command_queue) > 0:
                         # Parse commands
                         if self.COMMAND_SHUTDOWN in self.command_queue:
-                            # self.shutdown()
                             break
                         elif self.COMMAND_TRIGGER in self.command_queue:
                             self.command_queue.remove(self.COMMAND_TRIGGER)

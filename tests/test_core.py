@@ -7,6 +7,18 @@ import warnings
 import functools
 
 
+async def command_queue(hunter, commands):
+    """ Feed the executor commands to test it"""
+    try:
+        for command in commands:
+            hunter.command_queue.append(command)
+            await asyncio.sleep(0.5)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        hunter.event_loop.stop()
+    return True
+
 class Hunter_test(unittest.TestCase):
     def setUp(self):
         loop = asyncio.new_event_loop()
@@ -55,24 +67,29 @@ class Hunter_test(unittest.TestCase):
             self.assertEqual(task.cancelled(), True)
 
     def test_execute_commands(self):
-        async def command_queue(hunter):
-            """ Feed the executor commands to test it"""
-            commands = [hunter.COMMAND_TRIGGER, hunter.COMMAND_SHUTDOWN]
-            try:
-                for command in commands:
-                    hunter.command_queue.append(command)
-                    await asyncio.sleep(0.5)
-            except asyncio.CancelledError:
-                pass
-            finally:
-                hunter.event_loop.stop()
-            return True
+        commands = [self.hunter.COMMAND_TRIGGER, self.hunter.COMMAND_SHUTDOWN]
         mock_trigger = asynctest.CoroutineMock(return_value=True)
         self.hunter.trigger = mock_trigger
-        asyncio.ensure_future(command_queue(self.hunter))
+        asyncio.ensure_future(command_queue(self.hunter, commands))
         asyncio.ensure_future(self.hunter.execute_commands())
         self.hunter.event_loop.run_forever()
         mock_trigger.assert_called_once()
+
+    def test_parse_server_message(self):
+        self.hunter.parse_server_message(self.hunter.MESSAGE_SHUTDOWN)
+        self.assertEqual(self.hunter.COMMAND_SHUTDOWN in self.hunter.command_queue, True)
+
+    def test_get_server_messages(self):
+        commands = [self.hunter.COMMAND_SHUTDOWN]
+        mock_websocket = asynctest.CoroutineMock()
+        mock_websocket.recv = asynctest.CoroutineMock(return_value=self.hunter.MESSAGE_SHUTDOWN)
+        self.hunter.websocket = mock_websocket
+        asyncio.ensure_future(self.hunter.get_server_messages())
+        asyncio.ensure_future(self.hunter.execute_commands())
+        self.hunter.event_loop.run_forever()
+        mock_websocket.assert_called_once()
+
+
 
 # server_config
 # get_server_messages

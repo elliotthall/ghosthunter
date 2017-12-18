@@ -2,13 +2,17 @@ import asyncio
 import logging
 import functools
 import serial
-
 from .ble import HunterBLE
 
 
 class HunterMicrobit(HunterBLE):
     """
     Bluetooth Hunter using attached Micro:Bit as an interface
+    
+    This class can:
+        -Send message to microbit over serial
+        -Receive seriall message from microbit
+        -parse microbit messages
     """
     serial_address = '/dev/ttyACM0'
     serial = None
