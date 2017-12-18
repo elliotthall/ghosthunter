@@ -16,6 +16,6 @@ class HunterBleTest(unittest.TestCase):
 
     @patch('hunter.ble.Scanner')
     def test_get_ble_devices(self, scan_mock):
-        result = self.hunter.ble_scan()
-        scan_mock.assert_called()
+        self.hunter.ble_scan()
+        scan_mock.assert_called_with(self.hunter.ble_scan_length)
 
