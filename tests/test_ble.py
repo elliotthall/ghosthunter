@@ -16,6 +16,7 @@ class HunterBleTest(unittest.TestCase):
 
     def test_get_ble_devices(self):
         mock_return_none = unittest.mock.MagicMock(return_value=None)
-        with patch.object(mock_return_none, 'bluepy.btle.Scanner.scan'):
+        mock_return_none.scan = unittest.mock.MagicMock(return_value=None)
+        with patch.object(mock_return_none, 'hunter.ble.Scanner'):
             result = self.hunter.ble_scan()
             self.assertEqual(result, None)
