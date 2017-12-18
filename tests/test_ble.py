@@ -28,9 +28,11 @@ class HunterBleTest(unittest.TestCase):
         mock_entry_bad.rssi = -1
         mock_entry_bad.getScanData.return_value = [('1', "Local Name", 'Filter me out')]
         mock_entries = [mock_entry_good, mock_entry_bad]
-        import pdb; pdb.set_trace()
         result = self.hunter.get_ble_devices(mock_entries)
         self.assertEqual(len(result),1)
+        good_entry = result[0]
+        self.assertEqual(good_entry.addr, 'MAC')
+        self.assertEqual(good_entry.rssi, -1)
 
 
     # def test_extra_device_functions(self):
