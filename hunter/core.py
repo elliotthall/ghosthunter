@@ -118,7 +118,7 @@ class Hunter(object):
                     pong_waiter = await self.websocket.ping()
                     await asyncio.wait_for(pong_waiter, timeout=10)
                 except asyncio.TimeoutError:
-                    # No response to ping in 10 seconds.  Attempt to reconnect
+                    #todo No response to ping in 10 seconds.  Attempt to reconnect
                     break
             except CancelledError:
                 print("socket cancelled")

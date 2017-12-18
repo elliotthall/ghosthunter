@@ -1,10 +1,10 @@
-import unittest
-import unittest.mock as mock
-from hunter.core import Hunter
-import asynctest
 import asyncio
+import unittest
 import warnings
-import functools
+
+import asynctest
+
+from hunter.core import Hunter
 
 
 async def command_queue(hunter, commands):
@@ -18,6 +18,7 @@ async def command_queue(hunter, commands):
     finally:
         hunter.event_loop.stop()
     return True
+
 
 class Hunter_test(unittest.TestCase):
     def setUp(self):
@@ -33,7 +34,7 @@ class Hunter_test(unittest.TestCase):
         self.hunter.cancel_events()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            result =  self.hunter.shutdown()
+            result = self.hunter.shutdown()
         self.assertEqual(result, True)
         self.assertEqual(self.hunter.event_loop.is_running(), False)
 
@@ -48,7 +49,6 @@ class Hunter_test(unittest.TestCase):
         self.assertEqual(result, True)
         mock_server_config.assert_called_once()
 
-
     def test_trigger(self):
         result = self.hunter.event_loop.run_until_complete(self.hunter.trigger())
         self.assertEqual(result, True)
@@ -56,7 +56,7 @@ class Hunter_test(unittest.TestCase):
 
     def test_get_ghost_server_socket(self):
         mock_return_none = asynctest.CoroutineMock(return_value=None)
-        with asynctest.patch('websockets.connect',new=mock_return_none):
+        with asynctest.patch('websockets.connect', new=mock_return_none):
             result = self.hunter.event_loop.run_until_complete(self.hunter.get_ghost_server_socket())
         self.assertEqual(result, None)
 
@@ -80,70 +80,72 @@ class Hunter_test(unittest.TestCase):
         self.assertEqual(self.hunter.COMMAND_SHUTDOWN in self.hunter.command_queue, True)
 
     def test_get_server_messages(self):
-        commands = [self.hunter.COMMAND_SHUTDOWN]
         mock_websocket = asynctest.CoroutineMock()
         mock_websocket.recv = asynctest.CoroutineMock(return_value=self.hunter.MESSAGE_SHUTDOWN)
         self.hunter.websocket = mock_websocket
-        asyncio.ensure_future(self.hunter.get_server_messages())
-        asyncio.ensure_future(self.hunter.execute_commands())
-        self.hunter.event_loop.run_forever()
-        mock_websocket.assert_called_once()
+        try:
+            self.hunter.event_loop.run_until_complete(asyncio.gather(
+                self.hunter.get_server_messages(),
+                self.hunter.execute_commands()))
+        except asyncio.CancelledError:
+            pass
+        mock_websocket.recv.assert_called()
 
 
 
-# server_config
-# get_server_messages
-    # send_server_messag
-    # extra_device_functions
+        # server_config
+        # get_server_messages
+        # send_server_messag
+        # extra_device_functions
 
 
 
-    # class HunterRSSITest(unittest.TestCase):
-    #
-    #     def setUp(self):
-    #         context = {}
-    #         self.loop = asyncio.new_event_loop()
-    #         asyncio.set_event_loop(None)
-    #         self.hunter = HunterRSSI(context)
-    #         self.hunt_response={
-    #
-    #         }
-    #
-    #     def tearDown(self):
-    #         self.loop.close()
-    #
-    #     @unittest.skipIf(SKIP_WEBSOCKET, 'Skipping websocket calls to the fingerprint server')
-    #     def test_update_fingerprint_database(self):
-    #         # Query fingerprint db
-    #         # match its format against our mock
-    #         with mock.patch('hunter.core.HunterRSSI.update_fingerprint_database') as mock_update_fingerprint:
-    #             pass
-    #         pass
-    #
-    #     @unittest.skipIf(SKIP_WEBSOCKET, 'Skipping websocket calls to the hunt server')
-    #     def test_getwebsocket(self):
-    #         pass
-    #
-    #
-    #     @mock.patch('hunter.core.HunterRSSI.getwebsocket')
-    #     def test_bootup(self, Mockgetwebsocket):
-    #         Mockgetwebsocket.return_value = True
-    #         #self.loop.run_until_complete(self.hunter.bootup())
-    #         self.hunter.bootup(self.loop)
-    #         self.assertEqual(self.hunter.device_ready, True)
+        # class HunterRSSITest(unittest.TestCase):
+        #
+        #     def setUp(self):
+        #         context = {}
+        #         self.loop = asyncio.new_event_loop()
+        #         asyncio.set_event_loop(None)
+        #         self.hunter = HunterRSSI(context)
+        #         self.hunt_response={
+        #
+        #         }
+        #
+        #     def tearDown(self):
+        #         self.loop.close()
+        #
+        #     @unittest.skipIf(SKIP_WEBSOCKET, 'Skipping websocket calls to the fingerprint server')
+        #     def test_update_fingerprint_database(self):
+        #         # Query fingerprint db
+        #         # match its format against our mock
+        #         with mock.patch('hunter.core.HunterRSSI.update_fingerprint_database') as mock_update_fingerprint:
+        #             pass
+        #         pass
+        #
+        #     @unittest.skipIf(SKIP_WEBSOCKET, 'Skipping websocket calls to the hunt server')
+        #     def test_getwebsocket(self):
+        #         pass
+        #
+        #
+        #     @mock.patch('hunter.core.HunterRSSI.getwebsocket')
+        #     def test_bootup(self, Mockgetwebsocket):
+        #         Mockgetwebsocket.return_value = True
+        #         #self.loop.run_until_complete(self.hunter.bootup())
+        #         self.hunter.bootup(self.loop)
+        #         self.assertEqual(self.hunter.device_ready, True)
 
 
-    # shutdown
+        # shutdown
 
 
 
-    # async def listen_server(self):
+        # async def listen_server(self):
 
-    # def hunt_begin(self):
+        # def hunt_begin(self):
 
-    # def hunt_ended(self):
+        # def hunt_ended(self):
 
-    # async def get_ble_devices(self):
+        # async def get_ble_devices(self):
 
 
 if __name__ == '__main__':
