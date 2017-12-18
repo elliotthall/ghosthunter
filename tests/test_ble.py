@@ -5,10 +5,11 @@ import asynctest
 from hunter.ble import HunterBLE
 import concurrent.futures
 
-class HunterBleTest(asynctest.TestCase):
+class HunterBleTest(unittest.TestCase):
 
     def setUp(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.hunter = HunterBLE(loop, executor)
 
