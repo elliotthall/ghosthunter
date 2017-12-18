@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 import warnings
+from unittest.mock import patch
 import asynctest
 from hunter.ble import HunterBLE
 import concurrent.futures
@@ -14,7 +15,7 @@ class HunterBleTest(unittest.TestCase):
         self.hunter = HunterBLE(loop, executor)
 
     def test_get_ble_devices(self):
-        mock_return_none = asynctest.CoroutineMock(return_value=None)
-        with asynctest.patch('Scanner.scan', new=mock_return_none):
+        mock_return_none = unittest.mock.MagicMock(return_value=None)
+        with patch.object(mock_return_none, 'bluepy.btle.Scanner.scan'):
             result = self.hunter.ble_scan()
             self.assertEqual(result, None)
