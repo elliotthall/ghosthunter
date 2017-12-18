@@ -14,9 +14,8 @@ class HunterBleTest(unittest.TestCase):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.hunter = HunterBLE(loop, executor)
 
-    def test_get_ble_devices(self):
-        mock_return_none = unittest.mock.MagicMock(return_value=None)
-        mock_return_none.scan = unittest.mock.MagicMock(return_value=None)
-        with patch.object(mock_return_none, 'hunter.ble.Scanner'):
-            result = self.hunter.ble_scan()
-            self.assertEqual(result, None)
+    @patch('hunter.ble.Scanner')
+    def test_get_ble_devices(self, scan_mock):
+        result = self.hunter.ble_scan()
+        scan_mock.assert_called()
+
