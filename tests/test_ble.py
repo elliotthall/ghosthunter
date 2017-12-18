@@ -31,8 +31,9 @@ class HunterBleTest(unittest.TestCase):
         result = self.hunter.get_ble_devices(mock_entries)
         self.assertEqual(len(result),1)
         good_entry = result[0]
-        self.assertEqual(good_entry.addr, 'MAC')
-        self.assertEqual(good_entry.rssi, -1)
+        self.assertEqual(good_entry['MAC'], 'MAC')
+        self.assertEqual(good_entry['Name'], self.hunter.ble_name_prefix)
+        self.assertEqual(good_entry['RSSI'], -1)
 
 
     # def test_extra_device_functions(self):
