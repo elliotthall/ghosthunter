@@ -78,7 +78,7 @@ class HunterBLE(Hunter):
                 if len(scan_results) > 0:
                     for scan in scan_results:
                         logging.info("Discovered BLE device {}".format(scan))
-                # writer results to class
+                # write results to class
                 self.current_ble_devices = scan_results
             except CancelledError:
                 logging.info("Bluetooth finished")
