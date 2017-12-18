@@ -91,12 +91,21 @@ class Hunter_test(unittest.TestCase):
             pass
         mock_websocket.recv.assert_called()
 
+    def test_send_server_messages(self):
+        mock_websocket = asynctest.CoroutineMock()
+        mock_websocket.send = asynctest.CoroutineMock(side_effect=asyncio.TimeoutError)
+        self.hunter.websocket = mock_websocket
+        try:
+            self.hunter.event_loop.run_until_complete(asyncio.gather(
+                self.hunter.send_server_message('PING'),
+            ))
+        except asyncio.CancelledError:
+            pass
+        mock_websocket.send.assert_called()
+
 
 
         # server_config
-        # get_server_messages
-        # send_server_messag
-        # extra_device_functions
 
 
 

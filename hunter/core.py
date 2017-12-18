@@ -133,8 +133,7 @@ class Hunter(object):
             pass
         except CancelledError:
             # todo ensure last message attempt if cancelled during shutdown?
-            print("smessage cancelled")
-
+            print("send message cancelled")
         return None
 
     def extra_device_functions(self):
