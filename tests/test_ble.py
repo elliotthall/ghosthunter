@@ -25,6 +25,15 @@ def finish(future):
     print(future.result())
     asyncio.get_event_loop().stop()
 
+async def stop_loop(hunter, delay=1.0):
+    try:
+        await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        #hunter.event_loop.stop()
+        hunter.cancel_events()
+
 class HunterBleTest(unittest.TestCase):
     def setUp(self):
         loop = asyncio.new_event_loop()
@@ -50,12 +59,11 @@ class HunterBleTest(unittest.TestCase):
     @patch('hunter.ble.HunterBLE.get_ble_devices')
     def test_bluetooth_scan(self, mock_scan, mock_ble_devices):
         asyncio.ensure_future(stop_loop(self.hunter))
-        asyncio.ensure_future(self.hunter.bluetooth_scan())
+        bluetooth_task = asyncio.ensure_future(self.hunter.bluetooth_scan())
         mock_ble_devices.return_value = [{'MAC': 'MAC',
                                          "Name": 'Kontakt', "RSSI": -1}]
-        self.hunter.event_loop.run_until_complete(asyncio.gather(
-            stop_loop(self.hunter)
-        ))
+        bluetooth_task.add_done_callback(finish)
+        asyncio.get_event_loop().run_forever()
 
 
 

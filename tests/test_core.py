@@ -18,14 +18,7 @@ async def command_queue(hunter, commands, delay=0.5):
     return True
 
 
-async def stop_loop(hunter, delay=1.0):
-    try:
-        await asyncio.sleep(delay)
-    except asyncio.CancelledError:
-        pass
-    finally:
-        #hunter.event_loop.stop()
-        hunter.cancel_events()
+
 
 def finish(future):
     print(future.result())
