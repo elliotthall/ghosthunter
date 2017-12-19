@@ -57,8 +57,8 @@ class HunterBleTest(unittest.TestCase):
 
     @patch('hunter.ble.Scanner.scan')
     @patch('hunter.ble.HunterBLE.get_ble_devices')
-    def test_bluetooth_scan(self, mock_scan, mock_ble_devices):
-        asyncio.ensure_future(stop_loop(self.hunter))
+    def test_bluetooth_scan(self, mock_ble_devices, mock_scan):
+        asyncio.ensure_future(stop_loop(self.hunter, 0.1))
         bluetooth_task = asyncio.ensure_future(self.hunter.bluetooth_scan())
         mock_ble_devices.return_value = [{'MAC': 'MAC',
                                          "Name": 'Kontakt', "RSSI": -1}]
