@@ -13,7 +13,7 @@ Moved to its own file so that core functions can be tested on a Mac
 
 
 class HunterBLE(Hunter):
-    """ Hunter with added Bluetooth low energy support 
+    """ Hunter with added Bluetooth low energy support
     """
     # Bluetooh options
     # Length of time to scan
@@ -27,9 +27,8 @@ class HunterBLE(Hunter):
     # Uses bluepy https://github.com/IanHarvey/bluepy
 
     def __init__(self, event_loop=None, executor=None, **kwargs):
-        super(HunterBLE,self).__init__(event_loop,**kwargs)
+        super(HunterBLE, self).__init__(event_loop, **kwargs)
         self.executor = executor
-
 
     def ble_scan(self):
         """ Run ble scan and return found devices"""
@@ -44,7 +43,7 @@ class HunterBLE(Hunter):
     def get_ble_devices(self, devices):
         """ Scan for bluetooth devices
          filter by prefix to only get relevant beacons
-         :return: device list with dict {name, mac & RSSI} 
+         :return: device list with dict {name, mac & RSSI}
         """
         ble_devices = list()
         if devices:
@@ -58,8 +57,7 @@ class HunterBLE(Hunter):
                 if (name is not None and self.ble_name_prefix in name):
                     ble_devices.append({'MAC': dev.addr,
                                         "Name": name, "RSSI": dev.rssi})
-                    # Use nearest beacon for database
-                    # nearest = sorted(ble_devices, key=itemgetter('RSSI'), reverse=True)
+                    # Use nearest beacon for database                   
         return ble_devices
 
     async def bluetooth_scan(self):
@@ -73,7 +71,8 @@ class HunterBLE(Hunter):
         while True:
             try:
 
-                devices = await self.event_loop.run_in_executor(self.executor, self.ble_scan)
+                devices = await self.event_loop.run_in_executor(
+                    self.executor, self.ble_scan)
                 scan_results = self.get_ble_devices(devices)
                 if len(scan_results) > 0:
                     for scan in scan_results:
@@ -85,8 +84,7 @@ class HunterBLE(Hunter):
                 break
         return True
 
-        #return scan_results
-
+        # return scan_results
 
     def extra_device_functions(self):
         """ Add bluetooth scan to loop"""

@@ -34,11 +34,12 @@ def stop_loop_callback(future):
 class Hunter(object):
     """
     Hunter
-    
+
     The base class for all hunter devices.
     Runs a perpeutal event loop on the producer/consumer model.
-    Commands are added to the command_queue from server messages or hardware input
-    And consumed by device_specific functions in extra_device_functions
+    Commands are added to the command_queue from server messages or
+    hardware input and consumed by device_specific functions
+    in extra_device_functions.
 
     - Run perpetual event loop
     - Communicate with server via websockets
@@ -66,7 +67,6 @@ class Hunter(object):
     # Shutdown message from server
     MESSAGE_SHUTDOWN = 'SHUTDOWN'
 
-
     # async events to run in loop
     event_queue = list()
     # Any commands received by socket, I/O e.g. trigger scan
@@ -84,7 +84,6 @@ class Hunter(object):
         # Add device specific functionality
         for command in self.extra_device_functions():
             self.event_queue.append(command)
-
 
     async def server_config(self):
         """ Establish server connection, get extra config if necessary"""
@@ -112,7 +111,8 @@ class Hunter(object):
 
         while True:
             try:
-                message = await asyncio.wait_for(self.websocket.recv(), timeout=20)
+                message = await asyncio.wait_for(
+                    self.websocket.recv(), timeout=20)
                 logging.debug(message)
                 self.parse_server_message(message)
             except asyncio.TimeoutError:
@@ -120,7 +120,8 @@ class Hunter(object):
                     pong_waiter = await self.websocket.ping()
                     await asyncio.wait_for(pong_waiter, timeout=10)
                 except asyncio.TimeoutError:
-                    #todo No response to ping in 10 seconds.  Attempt to reconnect
+                    # todo No response to ping in 10 seconds.  Attempt to
+                    # reconnect
                     break
             except CancelledError:
                 print("socket cancelled")
@@ -139,11 +140,9 @@ class Hunter(object):
         return None
 
     def extra_device_functions(self):
-        """ Override with device-specific extra functions 
+        """ Override with device-specific extra functions
         you want to add to the loop"""
         return list()
-
-
 
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
@@ -170,7 +169,8 @@ class Hunter(object):
         logging.info("Closing websocket...")
         if self.websocket:
             self.event_loop.run_until_complete(self.websocket.close())
-        self.event_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+        self.event_loop.run_until_complete(
+            asyncio.gather(*asyncio.Task.all_tasks()))
         return True
 
     async def trigger(self):
@@ -184,7 +184,6 @@ class Hunter(object):
     def cancel_events(self):
         for task in asyncio.Task.all_tasks():
             task.cancel()
-
 
     async def execute_commands(self):
         """ Main function to tell the hunter device to 'do something'
@@ -264,9 +263,9 @@ class HunterOld(object):
 
     # Time device 'cooldown' after detection attempt
     async def device_recharge(device):
-        if device.device_ready == False:
+        if device.device_ready is False:
             await time.sleep(device.device_interval)
-            device.device_ready = True
+            device.device_ready is True
 
     # Send the device's position and properties
     # to hunt server
@@ -330,17 +329,6 @@ class HunterOld(object):
     # Device is ready to scan again
     def set_device_ready(self):
         self.device_ready = True
-
-    """
-    Subclass of hunter that uses wifi and/or BLE for positioning
-    
-    
-    - Recharge (if previously activated)
-    - Determine location
-        - Send change to server if changed
-    - Listen for new information from server
-    
-    """
 
 # class HunterRSSI(HunterOld):
 #     navigator_name = 'RSSI'

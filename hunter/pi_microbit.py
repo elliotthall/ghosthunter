@@ -8,7 +8,7 @@ from .ble import HunterBLE
 class HunterMicrobit(HunterBLE):
     """
     Bluetooth Hunter using attached Micro:Bit as an interface
-    
+
     This class can:
         -Send message to microbit over serial
         -Receive seriall message from microbit
@@ -22,7 +22,6 @@ class HunterMicrobit(HunterBLE):
     BUTTON_B_PRESSED = b"B_B_1\n"
     PING = b"PING\n"
     ECHO = b"ECHO\n"
-
 
     async def connect_serial(self):
         """ Connect to serial over usb"""
@@ -53,7 +52,7 @@ class HunterMicrobit(HunterBLE):
                 self.connect_serial()
 
     def parse_microbit_serial_message(self, message):
-        """Parse any messages from microbit and 
+        """Parse any messages from microbit and
         add to command queue as necesssary"""
         command = None
         if self.BUTTON_A_PRESSED in message:
