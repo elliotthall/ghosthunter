@@ -28,6 +28,11 @@ This is the base object from which all hunter devices should be derived.
 """
 
 
+def stop_loop_callback(future):
+    print(future.result())
+    asyncio.get_event_loop().stop()
+
+
 class Hunter(object):
     """
     Hunter
@@ -140,9 +145,7 @@ class Hunter(object):
         you want to add to the loop"""
         return list()
 
-    def stop_loop_callback(future):
-        print(future.result())
-        asyncio.get_event_loop().stop()
+
 
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
@@ -155,7 +158,7 @@ class Hunter(object):
         # Last, add the command parser
         execute_task = asyncio.ensure_future(
             self.execute_commands())
-        execute_task.add_done_callback(self.stop_loop_callback)
+        execute_task.add_done_callback(stop_loop_callback)
         # start the main event loop
         self.device_ready = True
         if run_forever:
