@@ -14,8 +14,6 @@ from local import (
 HUNT_BEGIN_MESSAGE = u'HUNT_BEGIN'
 HUNT_END_MESSAGE = u'HUNT_END'
 EVENT_UPDATE_MESSAGE_HEADER = u'available_events'
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
-logging.getLogger(__name__).addHandler(logging.NullHandler())
 __author__ = 'elliotthall'
 
 

@@ -31,7 +31,6 @@ async def stop_loop(hunter, delay=1.0):
     except asyncio.CancelledError:
         pass
     finally:
-        #hunter.event_loop.stop()
         hunter.cancel_events()
 
 class HunterBleTest(unittest.TestCase):
