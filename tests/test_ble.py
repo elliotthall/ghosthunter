@@ -21,6 +21,9 @@ def get_mock_scan_entries():
     mock_entries = [mock_entry_good, mock_entry_bad]
     return mock_entries
 
+def finish(future):
+    print(future.result())
+    asyncio.get_event_loop().stop()
 
 class HunterBleTest(unittest.TestCase):
     def setUp(self):

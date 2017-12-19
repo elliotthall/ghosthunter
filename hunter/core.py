@@ -158,6 +158,7 @@ class Hunter(object):
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
         logging.info("Shutting down...")
+        self.cancel_events()
         # todo final report to server?
         logging.info("Closing websocket...")
         if self.websocket:
@@ -201,7 +202,6 @@ class Hunter(object):
                     break
         finally:
             logging.debug("Stopping main loop")
-            self.cancel_events()
         return True
 
 
