@@ -7,17 +7,25 @@ import asynctest
 from hunter.core import Hunter
 
 
-async def command_queue(hunter, commands):
+async def command_queue(hunter, commands, delay=0.5):
     """ Feed the executor commands to test it"""
     try:
         for command in commands:
             hunter.command_queue.append(command)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(delay)
     except asyncio.CancelledError:
         pass
     finally:
         hunter.event_loop.stop()
     return True
+
+
+async def stop_loop(hunter, delay=1.0):
+    try:
+        await asyncio.sleep(delay)
+    finally:
+        hunter.cancel_events()
+        hunter.event_loop.stop()
 
 
 class Hunter_test(unittest.TestCase):
