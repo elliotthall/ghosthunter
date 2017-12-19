@@ -15,8 +15,6 @@ async def command_queue(hunter, commands, delay=0.5):
             await asyncio.sleep(delay)
     except asyncio.CancelledError:
         pass
-    finally:
-        hunter.event_loop.stop()
     return True
 
 
@@ -28,6 +26,10 @@ async def stop_loop(hunter, delay=1.0):
     finally:
         #hunter.event_loop.stop()
         hunter.cancel_events()
+
+def finish(future):
+    print(future.result())
+    asyncio.get_event_loop().stop()
 
 
 class Hunter_test(unittest.TestCase):
@@ -80,15 +82,10 @@ class Hunter_test(unittest.TestCase):
         commands = [self.hunter.COMMAND_TRIGGER, self.hunter.COMMAND_SHUTDOWN]
         mock_trigger = asynctest.CoroutineMock(return_value=True)
         self.hunter.trigger = mock_trigger
-        # asyncio.ensure_future(command_queue(self.hunter, commands))
-        # asyncio.ensure_future(self.hunter.execute_commands())
-        # self.hunter.event_loop.run_forever()
-        result = self.hunter.event_loop.run_until_complete(
-            asyncio.gather(
-                command_queue(self.hunter, commands),
-                self.hunter.execute_commands()
-            )
-        )
+        asyncio.ensure_future(command_queue(self.hunter, commands))
+        execute_task = asyncio.ensure_future(self.hunter.execute_commands())
+        execute_task.add_done_callback(finish)
+        self.hunter.event_loop.run_forever()
         mock_trigger.assert_called_with()
 
     def test_parse_server_message(self):

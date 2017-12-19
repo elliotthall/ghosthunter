@@ -202,6 +202,7 @@ class Hunter(object):
                     break
         finally:
             logging.debug("Stopping main loop")
+        self.cancel_events()
         return True
 
 
