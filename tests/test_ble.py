@@ -6,7 +6,7 @@ from unittest.mock import patch
 from bluepy.btle import ScanEntry
 
 from hunter.ble import HunterBLE
-from .test_core import stop_loop
+
 
 
 def get_mock_scan_entries():
