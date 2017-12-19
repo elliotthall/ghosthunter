@@ -50,7 +50,9 @@ class HunterBleTest(unittest.TestCase):
         asyncio.ensure_future(self.hunter.bluetooth_scan())
         mock_ble_devices.return_value = [{'MAC': 'MAC',
                                          "Name": 'Kontakt', "RSSI": -1}]
-        self.hunter.event_loop.run_forever()
+        self.hunter.event_loop.run_until_complete(asyncio.gather(
+            stop_loop(self.hunter)
+        ))
 
 
 

@@ -24,8 +24,8 @@ async def stop_loop(hunter, delay=1.0):
     try:
         await asyncio.sleep(delay)
     finally:
+        #hunter.event_loop.stop()
         hunter.cancel_events()
-        hunter.event_loop.stop()
 
 
 class Hunter_test(unittest.TestCase):
