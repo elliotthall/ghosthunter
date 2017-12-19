@@ -64,6 +64,12 @@ class HunterBleTest(unittest.TestCase):
                                          "Name": 'Kontakt', "RSSI": -1}]
         bluetooth_task.add_done_callback(finish)
         asyncio.get_event_loop().run_forever()
+        self.assertEqual(len(self.hunter.current_ble_devices), 1)
+        good_entry = self.hunter.current_ble_devices[0]
+        self.assertEqual(good_entry['MAC'], 'MAC')
+        self.assertEqual(good_entry['Name'], self.hunter.ble_name_prefix)
+        self.assertEqual(good_entry['RSSI'], -1)
+
 
 
 
