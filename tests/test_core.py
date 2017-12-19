@@ -107,7 +107,7 @@ class Hunter_test(unittest.TestCase):
             ))
         except asyncio.CancelledError:
             pass
-        mock_websocket.send.assert_called_with()
+        mock_websocket.send.assert_called_with('PING')
 
 
 
