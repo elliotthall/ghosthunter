@@ -52,7 +52,7 @@ class Hunter_test(unittest.TestCase):
             warnings.simplefilter("ignore")
             result = self.hunter.bootup(run_forever=False)
         self.assertEqual(result, True)
-        mock_server_config.assert_called_once()
+        mock_server_config.assert_called_with()
 
     def test_trigger(self):
         result = self.hunter.event_loop.run_until_complete(self.hunter.trigger())

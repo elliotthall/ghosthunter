@@ -81,8 +81,7 @@ class Hunter(object):
         # Add device specific functionality
         for command in self.extra_device_functions():
             self.event_queue.append(command)
-        # Last, add the command parser
-        self.event_queue.append(self.execute_commands())
+
 
     async def server_config(self):
         """ Establish server connection, get extra config if necessary"""
@@ -141,6 +140,10 @@ class Hunter(object):
         you want to add to the loop"""
         return list()
 
+    def stop_loop_callback(future):
+        print(future.result())
+        asyncio.get_event_loop().stop()
+
     # Overwrite this with your object's bootup
     # but remember to toggle ready and broadcast
     def bootup(self, run_forever=True):
@@ -149,6 +152,10 @@ class Hunter(object):
         self.event_loop.run_until_complete(self.server_config())
         for command in self.event_queue:
             asyncio.ensure_future(command)
+        # Last, add the command parser
+        execute_task = asyncio.ensure_future(
+            self.execute_commands())
+        execute_task.add_done_callback(self.stop_loop_callback)
         # start the main event loop
         self.device_ready = True
         if run_forever:
@@ -158,13 +165,11 @@ class Hunter(object):
     def shutdown(self):
         """ Perform any final tasks such as logging before shutting down """
         logging.info("Shutting down...")
-        self.cancel_events()
         # todo final report to server?
         logging.info("Closing websocket...")
         if self.websocket:
             self.event_loop.run_until_complete(self.websocket.close())
         self.event_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
-        self.event_loop.stop()
         return True
 
     async def trigger(self):
