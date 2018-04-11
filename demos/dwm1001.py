@@ -38,12 +38,22 @@ PMSC_CONFIG_DELAY = 0.00015
 IDLE_MODE = 0x00
 RX_MODE = 0x01
 TX_MODE = 0x02
+
 # Init spi
 bus = 0
 device = 0
 spi = spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz = 80000
+
+def send_api_message(dwm_message,delay=3000):
+    """
+    Send a message to the DWM chipset using its API codes.
+    Wait for response until delay timeout.
+    :return dwm byte response (see pdfs)
+    """
+
+    return dwm_response
 
 # Test message, dwm_pos_get
 msg = [0x02, 0x00]

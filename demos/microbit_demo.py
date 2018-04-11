@@ -39,17 +39,49 @@ class MicrobitDemo():
             np[pixel_id] = (0, 0, 0)
             np.show()
             microbit.sleep(100)
+            
+def radio_pulse(strength):
+    level = 4 - strength
+    microbit.display.set_pixel(2,level,9)
+    level += 1
+    if level > 4:
+        level = 4
+    microbit.display.set_pixel(1,level,9)
+    microbit.display.set_pixel(3,level,9)
+    level += 1
+    if level > 4:
+        level = 4
+    microbit.display.set_pixel(0,level,9)
+    microbit.display.set_pixel(4,level,9)
 
 demo = MicrobitDemo()
-np = neopixel.NeoPixel(microbit.pin1, 10)
-np.clear()
-microbit.pin0.write_analog(0)
+#np = neopixel.NeoPixel(microbit.pin1, 10)
+#np.clear()
+#microbit.pin0.write_analog(0)
 
 while True:
     if microbit.button_a.is_pressed():
         demo.initdetectionanimation()
-        demo.antenna_sweep(randint(50, 300))
+        found = [microbit.Image("00000:00000:00700:00000:00000"),
+            microbit.Image("00000:07770:07770:07770:00000")]
+        microbit.display.show(found, loop=False, delay=200)
+        microbit.sleep(500)
+        microbit.display.clear()
+        #demo.antenna_sweep(randint(50, 300))
+        
     if microbit.button_b.is_pressed():
-        demo.initdetectionanimation()
-        demo.led_pulse(np)
-        np.clear()
+        for max in range(0, 4):
+            for x in range(0,5):
+                vary = randint(0,1)
+                lessmore = randint(0,1)
+                if lessmore == 0:
+                    max += vary
+                else:
+                    max -= vary
+                if max < 0:
+                    max=0
+                if max > 4:
+                    max = 4
+                radio_pulse(max)
+                microbit.sleep(100)
+                microbit.display.clear()
