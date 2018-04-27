@@ -1,7 +1,7 @@
 import asyncio
 import concurrent.futures
 from concurrent.futures import CancelledError
-from hunter.pi_microbit import HunterMicrobit
+from hunter.core import HunterMicrobit
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())

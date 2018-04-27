@@ -6,3 +6,4 @@ pyserial
 uflash
 pytest
 asynctest
+spidev

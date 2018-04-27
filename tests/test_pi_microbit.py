@@ -3,7 +3,7 @@ import concurrent.futures
 import unittest
 from unittest.mock import patch
 from bluepy.btle import ScanEntry
-from hunter.pi_microbit import HunterMicrobit
+from hunter.core import HunterMicrobit
 
 class test_HunterMicrobit(unittest.TestCase):
 
