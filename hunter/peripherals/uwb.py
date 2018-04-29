@@ -28,20 +28,47 @@ DWM_POS_GET_MSG = [0x02, 0x00]
 # Return types
 DWM_RETURN_BYTE = 0x40
 DWM_POSITION_RETURN_TYPE = 0x41
-DWM_POSITION_RETURN_EXPECTED_LENGTH = 13
+POSITION_LENGTH = 13
+ANCHOR_LENGTH = 20
 DWM_LOC_GET_RETURN_TYPE = 0x49
+
 
 def get_anchors_from_response(response):
     """
     Extract the anchor information from a loc_get response
     and return it as a list of dicts
+
+    Each anchor response consists of:
+
+            2 bytes UWB address
+            4-byte distance
+            1-byte distance quality factor
+            position in standard 13 byte format
+
+            20 bytes in total
+
     :param response: bytes from DWM1001
     :return: list of anchors
     """
-    # todo get count byte
-    # for each in count
-    # parse anchor
-    pass
+    anchors = {}
+    # get count byte
+    return_type, length, anchor_count = response[0:2]
+    if return_type == DWM_LOC_GET_RETURN_TYPE:
+        # for each in count
+        for x in range(0, (anchor_count-1)):
+            # parse anchor
+            anchor_bytes = response[
+                           x * ANCHOR_LENGTH:(x + 1) * ANCHOR_LENGTH]
+            uwb_address= int.from_bytes(response[0:1], byteorder='little')
+            anchors[uwb_address] = {
+                'distance': int.from_bytes(response[2:5], byteorder='little'),
+                'qf': int.from_bytes(response[6], byteorder='little'),
+                'position': get_position_from_response(response[7:19])
+            }
+    else:
+        logging.error('Bad return type for anchor: {}'.format(return_type))
+    # todo order anchors by distance?
+    return anchors
 
 
 def get_position_from_response(response):
@@ -144,14 +171,16 @@ def dwm_serial_get_pos(serial_connection, message):
     uwb_locations = {}
     if response != 0:
         # make sure we're getting what we expect
-        if response[0] == DWM_POSITION_RETURN_TYPE:
-            if response[1] != DWM_POSITION_RETURN_EXPECTED_LENGTH:
+        if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
+            if response[1] != POSITION_LENGTH:
                 logging.error("Bad dwm_get_pos response. Length wrong")
             else:
-                uwb_locations['position'] = get_position_from_response(response[2:DWM_POSITION_RETURN_EXPECTED_LENGTH + 1])
-        elif response[0] == DWM_LOC_GET_RETURN_TYPE:
-            # more to do, get the anchors as well
-            uwb_locations['anchors'] = get_anchors_from_response(response)
+                uwb_locations['position'] = get_position_from_response(
+                    response[2:POSITION_LENGTH + 1])
+            if response[0] == DWM_LOC_GET_RETURN_TYPE:
+                # more to do, get the anchors as well
+                uwb_locations['anchors'] = get_anchors_from_response(
+                    response[3 + POSITION_LENGTH:])
         else:
             logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
         return uwb_locations
@@ -169,3 +198,5 @@ def dwm_serial_get_loc(serial_connection):
     """
     return dwm_serial_get_pos(serial_connection, DWM_LOC_GET_MSG)
 
+
+# todo Add functions to get/set the board config at startup
