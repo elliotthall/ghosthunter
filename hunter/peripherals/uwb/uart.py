@@ -19,7 +19,7 @@ DWM_ERROR_CODES = {0: 'no error',
 
 # API calls
 # full location message with position and nearby anchors
-DWM_LOC_GET_MSG = [0x0c, 0x00]
+DWM_LOC_GET_MSG = [0x0C, 0x00]
 # just position determined by location engine
 DWM_POS_GET_MSG = [0x02, 0x00]
 # dwm1001-dev configuration
@@ -55,37 +55,37 @@ tag_cfg = {
 }
 
 
-def get_anchors_from_response(response):
+def get_anchors_from_response(serial_connection):
     """
     Extract the anchor information from a loc_get response
     and return it as a list of dicts
 
     Each anchor response consists of:
 
-            2 bytes UWB address
+            2 bytes UWB address (For Tag, different for anchor)
             4-byte distance
             1-byte distance quality factor
             position in standard 13 byte format
 
             20 bytes in total
 
-    :param response: bytes from DWM1001
+    :param serial_connection: connection to dwm
     :return: list of anchors
     """
     anchors = {}
     # get count byte
-    return_type, length, anchor_count = response[0:2]
+
+    return_type, length, anchor_count = serial_connection.read(3)
     if return_type == DWM_LOC_GET_RETURN_TYPE:
         # for each in count
-        for x in range(0, (anchor_count - 1)):
+        for x in range(0, anchor_count):
             # parse anchor
-            anchor_bytes = response[
-                           x * ANCHOR_LENGTH:(x + 1) * ANCHOR_LENGTH]
-            uwb_address = int.from_bytes(response[0:1], byteorder='little')
+            anchor_bytes = serial_connection.read(20)
+            uwb_address = int.from_bytes(anchor_bytes[0:2], byteorder='little')
             anchors[uwb_address] = {
-                'distance': int.from_bytes(response[2:5], byteorder='little'),
-                'qf': int.from_bytes(response[6], byteorder='little'),
-                'position': get_position_from_response(response[7:19])
+                'distance': int.from_bytes(anchor_bytes[2:6], byteorder='little'),
+                'qf': anchor_bytes[6],
+                'position': get_position_from_response(anchor_bytes[7:20])
             }
     else:
         logging.error('Bad return type for anchor: {}'.format(return_type))
@@ -108,7 +108,8 @@ def get_position_from_response(response):
     z : bytes 8-11, 32-bit integer, in millimeters
     qf : bytes 12, 8-bit integer, position quality factor in percent
     """
-    if len(response) == 12:
+
+    if len(response) == POSITION_LENGTH:
         return {
             'x': int.from_bytes(response[0:3], byteorder='little'),
             'y': int.from_bytes(response[4:7], byteorder='little'),
@@ -159,6 +160,7 @@ def dwm_serial_get_pos(serial_connection, message):
     """
     response = serial_api_call(serial_connection, message)
     uwb_locations = {}
+
     if response != 0:
         # make sure we're getting what we expect
         if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
@@ -166,11 +168,11 @@ def dwm_serial_get_pos(serial_connection, message):
                 logging.error("Bad dwm_get_pos response. Length wrong")
             else:
                 uwb_locations['position'] = get_position_from_response(
-                    response[2:POSITION_LENGTH + 1])
-            if response[0] == DWM_LOC_GET_RETURN_TYPE:
+                    bytearray(response[2]))
+            if message == DWM_LOC_GET_MSG:
                 # more to do, get the anchors as well
                 uwb_locations['anchors'] = get_anchors_from_response(
-                    response[3 + POSITION_LENGTH:])
+                    serial_connection)
         else:
             logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
         return uwb_locations
