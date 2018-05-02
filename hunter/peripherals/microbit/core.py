@@ -4,19 +4,21 @@ Elliott Hall 29/4/2018
 """
 import microbit
 
+
 # Byte codes for communication between
-# pi and micro:bit.  Written as pairs to be same as uwb
+# pi and micro:bit.
 MICROBIT_CODES = {
     'ready': 1,
     # Same as dwm_cfg_get to identify serial connections
     # returns bytecode of device script on micro:bit
     'id': 8,
-    # higher than dwm error code so pi knows this is a micro:bit
-    'id_return': 4,
+    # Different than dwm error code so pi knows this is a micro:bit
+    'id_return': 0x09,
     # A (0), B(1) or both(2) buttons pressed
     'input': 10,
     # Accelecrometer data
     'acc': 11,
+    'toggle_acc': 14,
     # Light up a single pixel
     'pixel': 12,
     # Image
@@ -28,9 +30,12 @@ class MicrobitHunterController(object):
     """ Base class for all hunter microbits """
     loop_delay = 100
     # send accelerometer data, can be toggled
-    send_acc_data_active = True
+    send_acc_data_active = False
     # millisecond delay between acc sends
-    send_acc_data_delay = 500
+    send_acc_data_delay = 5
+    acc_data_delay = 0
+    # The integer id of this device's code version
+    device_id = 1
 
     def __init__(self):
         # serial communicator
@@ -42,23 +47,47 @@ class MicrobitHunterController(object):
         """Send a message to the pi
         in the format CODE::VALUE
         :param code: MICROBIT_CODE
-        :param value: value such as button presse, -1 is default for no value"""
+        :param value: value such as button presse, -1 is default for no value
+        """
         microbit.uart.write('{}::{}\n'.format(
             code,
             value
         ))
 
-    @staticmethod
-    def parse_pi_message():
+    def parse_pi_message(self):
         """Read input from the pi"""
         line = microbit.uart.readline()
-        
+        # split line into code :: value
+        code, sep, value = line.rstrip().partition('::')
+        if code == MICROBIT_CODES['id']:
+            self.send_to_pi(
+                MICROBIT_CODES['id_return'],
+                str(self.device_id)
+            )
+        elif code == MICROBIT_CODES['pixel']:
+            # change led
+            x, y, bright = value.split(",")
+            microbit.set_pixel(int(x), int(y), int(bright))
+            microbit.display.show()
+        elif code == MICROBIT_CODES['image']:
+            # display image(s)
+            # Format is delay;;image1,image 2 etc.
+            images = []
+            image_delay, image_strings = value.split(';;')
+            for i in image_strings.split(","):
+                images.append(microbit.Image(i))
+            microbit.display.clear()
+            microbit.display.show(images, delay=image_delay)
+        elif code == MICROBIT_CODES['toggle_acc']:
+            if int(value) == 0:
+                self.send_acc_data_active = False
+            else:
+                self.send_acc_data = True
 
     def send_acc_data(self):
         """ Get x,y,z accelerometer data
         send to Pi"""
         acc_values = microbit.accelerometer.get_values()
-
         self.send_to_pi(
             MICROBIT_CODES['acc'],
             "{},{},{}".format(
@@ -87,9 +116,12 @@ class MicrobitHunterController(object):
                             '1')
         # todo timer so we don't spam pi
         if self.send_acc_data_active:
+            if self.acc_data_delay < self.send_acc_data_delay:
+                self.acc_data_delay += 1
+            else:
+                self.acc_data_delay = 0
+                self.send_acc_data()
             self.send_acc_data()
-
-
 
     def startup(self):
         """ Perform startup connections

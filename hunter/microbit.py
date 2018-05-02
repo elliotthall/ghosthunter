@@ -25,13 +25,13 @@ class HunterMicrobit(HunterBLE):
             return None
 
     async def send_serial_message(self, message):
-        """Send a message to the microbit"""
+        """Send a message oto the microbit"""
         try:
             future = self.event_loop.run_in_executor(
                 self.executor,
                 functools.partial(self.serial.write, message)
             )
-            serial = await asyncio.wait_for(future, 30, loop=self.event_loop)
+            serial_future = await asyncio.wait_for(future, 30, loop=self.event_loop)
         except asyncio.TimeoutError:
             # check serial connection
             if self.serial.is_open is False:

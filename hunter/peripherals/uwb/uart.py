@@ -1,8 +1,10 @@
 """
-Functions for communicating with the API of the Decawave DWM1001-DEV UWB board
-Board can be connected over spi or serial, so we have functions for both
+Functions for communicating with the API of the Decawave DWM1001-DEV UWB board over UART
+
 """
 import logging
+
+import bitstring
 
 UWB_SERIAL_BAUDRATE = 115200
 
@@ -24,6 +26,8 @@ DWM_POS_GET_MSG = [0x02, 0x00]
 DWM_CFG_GET_MSG = [0x08, 0x00]
 # set board as tag, must reset
 DWM_CFG_TAG_MSG = [0x03, 0x04]
+DWM_SET_TAG_MSG = b'\x05\x02'
+DWM_RESET = [0x14, 0x00]
 
 # Return types
 DWM_RETURN_BYTE = 0x40
@@ -31,6 +35,24 @@ DWM_POSITION_RETURN_TYPE = 0x41
 POSITION_LENGTH = 13
 ANCHOR_LENGTH = 20
 DWM_LOC_GET_RETURN_TYPE = 0x49
+
+# standard config for tag
+# binary string that will be joined and converted
+# to two bytes for set_tag_cfg
+tag_cfg = {
+    # (* BYTE 0 *)
+    'low_power_en': '1',
+    'loc_engine_en': '1',
+    'r1': '0',
+    'led_en': '0',
+    'ble_en': '1',
+    'fw_update_en': '1',
+    'uwb_mode': '10',
+    # (* BYTE 1 *)
+    'b1_reserved': '00000',
+    'accel_en': '1',
+    'meas_mode': '00'
+}
 
 
 def get_anchors_from_response(response):
@@ -98,11 +120,12 @@ def get_position_from_response(response):
         print('Bad UWB position response.')
 
 
-def serial_api_call(serial_connection, message):
-    """Make a call to the DWM1001-dev api
+def serial_api_call(serial_connection, message, call_type='get'):
+    """Make a get call to the DWM1001-dev api
     over a serial connection
     :param serial_connection: connection to dwm board
     :param message: api_message to send (must be bytes or bytearray)
+    :param call_type: get or set api call
     :returns array of bytes, 0 if error
     """
     # Write
@@ -110,16 +133,21 @@ def serial_api_call(serial_connection, message):
     # First byte is return code
     # then how long (in bytes) response is
     # and error code. (should be 0)
-    (return_byte, response_length, error_code, return_object_type, return_object_type_length) = serial_connection.read(
-        5)
+    (return_byte, response_length, error_code) = serial_connection.read(3)
     # Check the Error code
-    if error_code == DWM_ERROR_CODES[0]:
+    if int(error_code) == 0:
         # All is well, return the rest of the response
-        response = [return_object_type, return_object_type_length]
-        return response.append(serial_connection.read(return_object_type_length))
+        if call_type == 'get':
+            (return_object_type, return_object_type_length) = \
+                serial_connection.read(2)
+            response = [return_object_type, return_object_type_length]
+            response.append(serial_connection.read(return_object_type_length))
+            return response
+        else:
+            return return_byte, response_length, error_code
     else:
-        logging.error('DWM position call error: {}'.format(DWM_ERROR_CODES[error_code]))
-        return 0
+        logging.error('DWM position call error: {}'.format(DWM_ERROR_CODES[int(error_code)]))
+        return error_code
 
 
 def dwm_serial_get_pos(serial_connection, message):
@@ -161,17 +189,9 @@ def dwm_serial_get_loc(serial_connection):
     return dwm_serial_get_pos(serial_connection, DWM_LOC_GET_MSG)
 
 
-def get_cfg_from_response(response):
-    """
-
-    :param response:
-    :return:
-    """
-    try:
-        cfg_bytes = response[2:3]
-
-    except IndexError:
-        logging.error("Bad cfg response {}".format(response))
+def dwm_reset(serial_connection):
+    """Send the reset command to the DWM board"""
+    serial_api_call(serial_connection, DWM_RESET, 'set')
 
 
 def dwm_serial_get_cfg(serial_connection):
@@ -180,6 +200,69 @@ def dwm_serial_get_cfg(serial_connection):
     :param serial_connection:
     :return:
     """
-    response = serial_api_call(serial_connection, DWM_CFG_TAG_MSG)
+    response = serial_api_call(serial_connection, DWM_CFG_GET_MSG)
+    return get_cfg_from_response(response[2])
 
-# todo Add functions to get/set the board config at startup
+
+def get_cfg_from_response(response):
+    """
+    parse get_cfg response
+
+    2 config bytes - (2) denotes attribute that is two bits, all others 1
+(* BYTE 0 *)
+ low_power_en
+ loc_engine_en
+ reserved
+ led_en
+ ble_en
+ fw_update_en
+ (2)uwb_mode
+(* BYTE 1 *)
+(2) reserved
+mode : 0 - tag, 1 - anchor
+initiator
+bridge
+accel_en
+(2)meas_mode : 0 - TWR, 1-3 not supported
+
+    :param response: 2 bytes from dwm_cfg_get
+    :return: dict of dwm configuration
+    """
+    try:
+        cfg_bytes = bitstring.BitArray(bytes=response)
+        cfg = {
+            'low_power_en': cfg_bytes[0],
+            'loc_engine_en': cfg_bytes[1],
+            'reserved': cfg_bytes[2],
+            'led_en': cfg_bytes[3],
+            'ble_en': cfg_bytes[4],
+            'fw_update_en': cfg_bytes[5],
+        }
+        cfg['uwb_mode'] = cfg_bytes[6:8].int * -1
+        if cfg_bytes[10]:
+            cfg['mode'] = 'anchor'
+        else:
+            cfg['mode'] = 'tag'
+        cfg['initiator'] = cfg_bytes[11]
+        cfg['bridge'] = cfg_bytes[12]
+        cfg['accel_en'] = cfg_bytes[13]
+        # ignoring meas_mode for the moment
+        return cfg
+    except IndexError:
+        logging.error("Bad cfg response {}".format(response))
+
+
+def set_tag_cfg(serial_connection, tag_cfg):
+    """Set the attached dwm to tag configuration
+    2 bytes sent, bit configuration:
+    (* BYTE 0 *) (bit 7) low_power_en (bit 6) loc_engine_en (bit 5) reserved (bit 4) led_en (bit 3) ble_en (bit 2) fw_update_en (bits 0-1) uwb_mode
+    (* BYTE 1 *) (bits 3-7) reserved (bit 2) accel_en (bits 0-1) meas_mode : 0 - TWR, 1-3 reserved
+
+    :param serial_connection:
+    :param tag_cfg configuration dict to be made into bytes
+    :return: error_code
+    """
+    cfg_string = ''.join(tag_cfg.values())
+    cfg_tag = bitstring.BitArray(bin=cfg_string)
+    (return_byte, response_length, error_code) = serial_api_call(serial_connection,bytearray(DWM_SET_TAG_MSG)+cfg_tag.bytes,'set')
+    return error_code

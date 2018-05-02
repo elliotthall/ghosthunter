@@ -1,13 +1,13 @@
 import asyncio
 import concurrent.futures
 from concurrent.futures import CancelledError
-from hunter.core import HunterMicrobit
+from hunter.core import HunterUwbMicrobit
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class HunterTest(HunterMicrobit):
+class HunterTest(HunterUwbMicrobit):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
     # hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
@@ -62,7 +62,7 @@ def main():
         finally:
             hunter.shutdown()
             loop.close()
-            hunter.serial.close()
+            hunter.microbit_serial.close()
 
 
 if __name__ == '__main__':

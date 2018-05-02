@@ -3,9 +3,10 @@ import functools
 import logging
 from concurrent.futures import CancelledError
 
-import serial
 import websockets
 
+import hunter.peripherals.uwb as uwb
+import hunter.utils as utils
 from .ble import HunterBLE
 
 # from bluepy.btle import Scanner
@@ -209,7 +210,7 @@ class Hunter(object):
         return True
 
 
-class HunterMicrobit(HunterBLE):
+class HunterUwbMicrobit(HunterBLE):
     """
     Bluetooth Hunter using attached Micro:Bit as an interface
 
@@ -218,25 +219,31 @@ class HunterMicrobit(HunterBLE):
         -Receive seriall message from microbit
         -parse microbit messages
     """
-    serial_address = '/dev/ttyACM0'
-    serial = None
+    microbit_serial_address = '/dev/ttyACM1'
+    microbit_serial = None
+    uwb_serial_address = '/dev/ttyACM0'
+    uwb_serial = None
 
-    # Message to pass/receive from Micro:bit
-    BUTTON_A_PRESSED = b"B_A_1\n"
-    BUTTON_B_PRESSED = b"B_B_1\n"
-    PING = b"PING\n"
-    ECHO = b"ECHO\n"
-
-    async def connect_serial(self):
-        """ Connect to serial over usb"""
-        try:
-            self.serial = serial.Serial(self.serial_address, 115200, timeout=3)
-            return True
-        except asyncio.TimeoutError:
-            logging.error("Serial connection failed!")
-            raise IOError("Serial connection failed!")
-        except asyncio.CancelledError:
-            return None
+    def init_serial_connections(self):
+        """Establish UART connections to UWB and Micro:bit
+        Since addresses are assigned in the order deivces are connected
+        Test to make sure """
+        # Establish connections
+        first_conn = utils.connect_serial(self.microbit_serial_address)
+        second_conn = utils.connect_serial(self.microbit_serial_address)
+        # Send an id message, verify this is a DWM
+        first_conn.write(uwb.DWM_CFG_GET_MSG)
+        return_type = first_conn.read()
+        if return_type == uwb.DWM_RETURN_BYTE:
+            # Yes, assign to uwb
+            self.uwb_serial = first_conn
+            self.microbit_serial = second_conn
+            # todo parse the cfg get and configure here?
+        else:
+            # No, asssign to micro:bit
+            self.microbit_serial = first_conn
+            self.uwb_serial = second_conn
+        return True
 
     async def send_serial_message(self, message):
         """Send a message to the microbit
@@ -244,14 +251,14 @@ class HunterMicrobit(HunterBLE):
         try:
             future = self.event_loop.run_in_executor(
                 self.executor,
-                functools.partial(self.serial.write, message)
+                functools.partial(self.microbit_serial.write, message)
             )
             await asyncio.wait_for(future, 30, loop=self.event_loop)
         except TypeError as e:
             logging.error("Bad microbit sent message: {}".format(e))
         except asyncio.TimeoutError:
             # check serial connection
-            if self.serial.is_open is False:
+            if self.microbit_serial.is_open is False:
                 # serial connection lost, try to reestablish
                 self.connect_serial()
 
@@ -265,7 +272,7 @@ class HunterMicrobit(HunterBLE):
         return command
 
     def read_serial(self):
-        return self.serial.readline()
+        return self.microbit_serial.readline()
 
     async def receive_serial_message(self):
         """ Listen for JSON serial messages, pass to parser"""
@@ -279,15 +286,17 @@ class HunterMicrobit(HunterBLE):
                 self.parse_microbit_serial_message(message)
             except asyncio.TimeoutError:
                 # check serial connection
-                if self.serial.is_open is False:
+                if self.microbit_serial.is_open is False:
                     # serial connection lost, try to reestablish
                     self.connect_serial()
 
     def extra_device_functions(self):
         """ Add bluetooth scan to loop"""
-        device_functions = super(HunterMicrobit, self).extra_device_functions()
+        device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
         device_functions.append(self.receive_serial_message())
         return device_functions
+
+
 
 
 """

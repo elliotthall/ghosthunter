@@ -3,7 +3,7 @@ import concurrent.futures
 import unittest
 from unittest.mock import patch
 from bluepy.btle import ScanEntry
-from hunter.core import HunterMicrobit
+from hunter.core import HunterUwbMicrobit
 
 class test_HunterMicrobit(unittest.TestCase):
 
@@ -11,7 +11,7 @@ class test_HunterMicrobit(unittest.TestCase):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
-        self.hunter = HunterMicrobit(loop, self.executor)
+        self.hunter = HunterUwbMicrobit(loop, self.executor)
 
     def tearDown(self):
         self.executor.shutdown()
