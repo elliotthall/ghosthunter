@@ -1,11 +1,20 @@
+"""
+Hunter core library classes
+
+All hunter devices should be derived from these objects.
+
+
+"""
 import asyncio
 import functools
 import logging
+import time
 from concurrent.futures import CancelledError
 
 import websockets
 
-import hunter.peripherals.uwb as uwb
+import hunter.peripherals.microbit.utils as microbit_utils
+import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
 from .ble import HunterBLE
 
@@ -16,18 +25,200 @@ HUNT_END_MESSAGE = u'HUNT_END'
 EVENT_UPDATE_MESSAGE_HEADER = u'available_events'
 __author__ = 'elliotthall'
 
-"""
-Hunter core library classes
-
-This is the base object from which all hunter devices should be derived.
-
-
-"""
-
 
 def stop_loop_callback(future):
     print(future.result())
     asyncio.get_event_loop().stop()
+
+
+class HunterUwbMicrobit(HunterBLE):
+    """
+    Bluetooth Hunter using two interfaces over UART
+        - attached Micro:Bit as an interface
+        - DWM1001-DEV for internal positioning and ranging
+
+    This class can:
+        -Send/receive message to microbit over serial
+        -Receive/send message from DWM1001-DEV
+        -parse messages from both peripherials
+    """
+    microbit_serial_address = '/dev/ttyACM1'
+    microbit_serial = None
+    uwb_serial_address = '/dev/ttyACM0'
+    uwb_serial = None
+
+    def init_serial_connections(self):
+        """Establish UART connections to UWB and Micro:bit
+        Since addresses are assigned in the order deivces are connected
+        Test to make sure """
+        # Establish connections
+        first_conn = utils.connect_serial(self.microbit_serial_address)
+        second_conn = utils.connect_serial(self.microbit_serial_address)
+        # Send an id message, verify this is a DWM
+        first_conn.write(uwb.DWM_CFG_GET_MSG)
+        return_type = first_conn.read()
+        if return_type == uwb.DWM_RETURN_BYTE:
+            # Yes, assign to uwb
+            self.uwb_serial = first_conn
+            self.microbit_serial = second_conn
+            # todo parse the cfg get and configure here?
+        else:
+            # No, asssign to micro:bit
+            self.microbit_serial = first_conn
+            self.uwb_serial = second_conn
+        return True
+
+    def device_startup_tasks(self):
+        """1. Connect UART to micro:bit and DWM1001-DEV
+           2. Reset the micro:bit and DWM1001-DEV boards
+           3. Confirm both boards are ready
+           :return True if tasks successful
+           """
+        result = self.init_serial_connections()
+        if not result:
+            logging.error('UART connection failed!')
+            return False
+        else:
+            self.reset_uwb()
+            self.reset_microbit()
+            # Give boards time to reset
+            time.sleep(0.3)
+            # Query boards
+            # todo simplify?  Timeout?
+            tasks = [
+                self.event_loop.run_in_executor(
+                    self.executor,
+                    functools.partial(self.read_microbit_serial,
+                                      self.microbit_serial,
+                                      None)
+                ),
+                self.event_loop.run_in_executor(
+                    self.executor,
+                    functools.partial(uwb.dwm_serial_get_cfg,
+                                      self.uwb_serial,
+                                      None)
+                )
+            ]
+            try:
+                micro_result, uwb_cfg = self.event_loop.run_until_complete(
+                    asyncio.wait_for(tasks,
+                                     timeout=10,
+                                     loop=self.event_loop
+                                     )
+                )
+                if microbit_utils.MICROBIT_CODES['ready'] in micro_result:
+                    # Microbit ready
+                    logging.info('DWM1001-DEV ready.')
+                else:
+                    logging.error('Micro:bit startup failed!')
+                    return False
+                try:
+                    # UWB confirm we got a config back and it's correct
+                    # todo add further config tests
+                    if 'tag' in uwb_cfg['mode']:
+                        logging.info('DWM1001-DEV ready.')
+                except IndexError:
+                    logging.error('Getting uwb config on startup failed!')
+                    return False
+                # All done, return we are ready
+                return True
+            except asyncio.TimeoutError:
+                logging.error('Peripheral startup timed out!')
+                return False
+
+    def reset_microbit(self):
+        """Send a reset command to the attached micro:bit"""
+        self.send_microbit_serial(self.microbit_serial,
+                                  microbit_utils.MICROBIT_CODES['reset']
+                                  )
+
+    def reset_uwb(self):
+        """ Send a reset command to the DWM board"""
+        uwb.dwm_reset(self.uwb_serial)
+
+    async def send_microbit_serial(self, serial_connection, message):
+        if self.microbit_serial.is_open:
+            return self.wrap_serial(serial_connection, message)
+        else:
+            logging.warning('Trying to send microbit msg over closed uart {}'.format(
+                message
+            ))
+
+    async def wrap_serial(self, serial_connection, serial_function, message=None):
+        """Wrap a command in a future
+        used for uart communication
+        :param serial_function: uart function
+        :param serial_connection: uart connection for function
+        :param message: message to send, none if receive
+        """
+        try:
+            if message:
+                future = self.event_loop.run_in_executor(
+                    self.executor,
+                    functools.partial(serial_function, serial_connection, message)
+                )
+            else:
+                future = self.event_loop.run_in_executor(
+                    self.executor,
+                    functools.partial(serial_function, serial_connection)
+                )
+            return await asyncio.wait_for(future, 30, loop=self.event_loop)
+        # except TypeError as e:
+        #     logging.error("Bad microbit sent message: {}".format(e))
+        except asyncio.TimeoutError:
+            # check serial connection
+            if serial_connection.is_open is False:
+                # serial connection lost, try to reestablish
+                serial_connection.open()
+
+    def parse_microbit_serial_message(self, message):
+        """Parse any messages from microbit and
+        add to command queue as necesssary"""
+        command = None
+        # '{}::{}\n'
+        if '{}::{}\n'.format(
+                microbit_utils.MICROBIT_CODES['input'],
+                microbit_utils.BUTTON_A
+        ) in message:
+            # Button a pressed
+            command = self.COMMAND_TRIGGER
+        self.command_queue.append(command)
+        return command
+
+    def read_microbit_serial(self):
+        if self.microbit_serial.is_open:
+            return self.wrap_serial(self.microbit_serial)
+        else:
+            logging.warning('Trying to read microbit msg over closed uart')
+
+    async def receive_serial_message(self):
+        """ Listen for JSON serial messages, pass to parser"""
+        while True:
+            try:
+                future = self.event_loop.run_in_executor(
+                    self.executor, self.read_microbit_serial)
+                message = await asyncio.wait_for(
+                    future, 30, loop=self.event_loop)
+                logging.debug("Serial message received: {}".format(message))
+                self.parse_microbit_serial_message(message)
+            except asyncio.TimeoutError:
+                # check serial connection
+                if self.microbit_serial.is_open is False:
+                    # serial connection lost, try to reestablish
+                    self.connect_serial()
+
+    def extra_device_functions(self):
+        """ Add bluetooth scan to loop"""
+        device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
+        device_functions.append(self.init_serial_connections())
+        device_functions.append(self.receive_serial_message())
+        return device_functions
+
+    async def get_uwb_pos(self):
+        # todo error trap
+        self.wrap_serial(self.uwb_serial,
+                         uwb.dwm_serial_get_loc
+                         )
 
 
 class Hunter(object):
@@ -84,6 +275,10 @@ class Hunter(object):
         for command in self.extra_device_functions():
             self.event_queue.append(command)
 
+    def device_startup_tasks(self):
+        """ Override with device-specific startup tasks"""
+        return True
+
     async def server_config(self):
         """ Establish server connection, get extra config if necessary"""
         await self.get_ghost_server_socket()
@@ -106,8 +301,7 @@ class Hunter(object):
 
     async def get_server_messages(self):
         """ Retrieve any messages sent to device from server"""
-        print("Get server messages...")
-
+        logging.debug("Get server messages...")
         while True:
             try:
                 message = await asyncio.wait_for(
@@ -123,7 +317,7 @@ class Hunter(object):
                     # reconnect
                     break
             except CancelledError:
-                print("socket cancelled")
+                logging.debug("socket cancelled")
                 break
         return None
 
@@ -143,12 +337,12 @@ class Hunter(object):
         you want to add to the loop"""
         return list()
 
-    # Overwrite this with your object's bootup
-    # but remember to toggle ready and broadcast
     def bootup(self, run_forever=True):
         """ Set up event loop and boot up"""
         logging.info("Starting up...")
         self.event_loop.run_until_complete(self.server_config())
+        # device specific startup tasks e.g UART connections
+        self.device_startup_tasks()
         for command in self.event_queue:
             asyncio.ensure_future(command)
         # Last, add the command parser
@@ -188,6 +382,7 @@ class Hunter(object):
         """ Main function to tell the hunter device to 'do something'
         based on notifications from bluetooth, user input, sockets etc.
         commands in while loop should be ordered by priority
+        Should be overriden by device-sepecic functions
         """
         try:
             while True:
@@ -202,101 +397,12 @@ class Hunter(object):
                             self.trigger()
                     await asyncio.sleep(0.1)
                 except CancelledError:
-                    print("execute_commands cancelled")
+                    logging.debug("execute_commands cancelled")
                     break
         finally:
             logging.debug("Stopping main loop")
         self.cancel_events()
         return True
-
-
-class HunterUwbMicrobit(HunterBLE):
-    """
-    Bluetooth Hunter using attached Micro:Bit as an interface
-
-    This class can:
-        -Send message to microbit over serial
-        -Receive seriall message from microbit
-        -parse microbit messages
-    """
-    microbit_serial_address = '/dev/ttyACM1'
-    microbit_serial = None
-    uwb_serial_address = '/dev/ttyACM0'
-    uwb_serial = None
-
-    def init_serial_connections(self):
-        """Establish UART connections to UWB and Micro:bit
-        Since addresses are assigned in the order deivces are connected
-        Test to make sure """
-        # Establish connections
-        first_conn = utils.connect_serial(self.microbit_serial_address)
-        second_conn = utils.connect_serial(self.microbit_serial_address)
-        # Send an id message, verify this is a DWM
-        first_conn.write(uwb.DWM_CFG_GET_MSG)
-        return_type = first_conn.read()
-        if return_type == uwb.DWM_RETURN_BYTE:
-            # Yes, assign to uwb
-            self.uwb_serial = first_conn
-            self.microbit_serial = second_conn
-            # todo parse the cfg get and configure here?
-        else:
-            # No, asssign to micro:bit
-            self.microbit_serial = first_conn
-            self.uwb_serial = second_conn
-        return True
-
-    async def send_serial_message(self, message):
-        """Send a message to the microbit
-        NOTE: Must be bytestring, terminated with newline"""
-        try:
-            future = self.event_loop.run_in_executor(
-                self.executor,
-                functools.partial(self.microbit_serial.write, message)
-            )
-            await asyncio.wait_for(future, 30, loop=self.event_loop)
-        except TypeError as e:
-            logging.error("Bad microbit sent message: {}".format(e))
-        except asyncio.TimeoutError:
-            # check serial connection
-            if self.microbit_serial.is_open is False:
-                # serial connection lost, try to reestablish
-                self.connect_serial()
-
-    def parse_microbit_serial_message(self, message):
-        """Parse any messages from microbit and
-        add to command queue as necesssary"""
-        command = None
-        if self.BUTTON_A_PRESSED in message:
-            command = self.COMMAND_TRIGGER
-        self.command_queue.append(command)
-        return command
-
-    def read_serial(self):
-        return self.microbit_serial.readline()
-
-    async def receive_serial_message(self):
-        """ Listen for JSON serial messages, pass to parser"""
-        while True:
-            try:
-                future = self.event_loop.run_in_executor(
-                    self.executor, self.read_serial)
-                message = await asyncio.wait_for(
-                    future, 30, loop=self.event_loop)
-                logging.debug("Serial message received: {}".format(message))
-                self.parse_microbit_serial_message(message)
-            except asyncio.TimeoutError:
-                # check serial connection
-                if self.microbit_serial.is_open is False:
-                    # serial connection lost, try to reestablish
-                    self.connect_serial()
-
-    def extra_device_functions(self):
-        """ Add bluetooth scan to loop"""
-        device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
-        device_functions.append(self.receive_serial_message())
-        return device_functions
-
-
 
 
 """
