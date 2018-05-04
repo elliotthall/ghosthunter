@@ -3,27 +3,7 @@ Core classes for the micro:bit interfaces for ghost hunting devices
 Elliott Hall 29/4/2018
 """
 import microbit
-
-
-# Byte codes for communication between
-# pi and micro:bit.
-MICROBIT_CODES = {
-    'ready': 1,
-    # Same as dwm_cfg_get to identify serial connections
-    # returns bytecode of device script on micro:bit
-    'id': 8,
-    # Different than dwm error code so pi knows this is a micro:bit
-    'id_return': 0x09,
-    # A (0), B(1) or both(2) buttons pressed
-    'input': 10,
-    # Accelecrometer data
-    'acc': 11,
-    'toggle_acc': 14,
-    # Light up a single pixel
-    'pixel': 12,
-    # Image
-    'image': 13,
-}
+from utils import MICROBIT_CODES
 
 
 class MicrobitHunterController(object):
@@ -59,7 +39,10 @@ class MicrobitHunterController(object):
         line = microbit.uart.readline()
         # split line into code :: value
         code, sep, value = line.rstrip().partition('::')
-        if code == MICROBIT_CODES['id']:
+        if code == MICROBIT_CODES['reset']:
+            # reset the micro:bit
+            microbit.reset()
+        elif code == MICROBIT_CODES['id']:
             self.send_to_pi(
                 MICROBIT_CODES['id_return'],
                 str(self.device_id)
@@ -121,7 +104,6 @@ class MicrobitHunterController(object):
             else:
                 self.acc_data_delay = 0
                 self.send_acc_data()
-            self.send_acc_data()
 
     def startup(self):
         """ Perform startup connections
