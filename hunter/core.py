@@ -387,7 +387,7 @@ class HunterUwbMicrobit(HunterBLE):
         self.microbit_serial.write(bytes('{}::{}\n'.format(
             microbit_utils.MICROBIT_CODES['reset'],
             0
-        )))
+        ), encoding='UTF-8'))
 
     def reset_uwb(self):
         """ Send a reset command to the DWM board"""
