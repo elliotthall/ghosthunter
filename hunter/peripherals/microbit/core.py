@@ -3,8 +3,31 @@ Core classes for the micro:bit interfaces for ghost hunting devices
 Elliott Hall 29/4/2018
 """
 import microbit
-from utils import MICROBIT_CODES
 
+
+# Byte codes for communication between
+# pi and micro:bit.
+MICROBIT_CODES = {
+    'ready': 1,
+    # Same as dwm_cfg_get to identify serial connections
+    # returns bytecode of device script on micro:bit
+    'id': 8,
+    # Different than dwm error code so pi knows this is a micro:bit
+    'id_return': 0x09,
+    'input': 10, # A (0), B(1) or both(2) buttons pressed
+    # Accelecrometer data
+    'acc': 11,
+    'toggle_acc': 14,
+    # Light up a single pixel
+    'pixel': 12,
+    # Image
+    'image': 13,
+    'reset': 14,
+}
+
+BUTTON_A = 0
+BUTTON_B = 1
+BUTTON_BOTH = 2
 
 class MicrobitHunterController(object):
     """ Base class for all hunter microbits """
@@ -92,9 +115,13 @@ class MicrobitHunterController(object):
             self.send_to_pi(MICROBIT_CODES['input'],
                             '2')
         elif microbit.button_a.is_pressed():
+            microbit.display.clear()
+            microbit.display.show('A')
             self.send_to_pi(MICROBIT_CODES['input'],
                             '0')
         elif microbit.button_b.is_pressed():
+            microbit.display.clear()
+            microbit.display.show('B')
             self.send_to_pi(MICROBIT_CODES['input'],
                             '1')
         # todo timer so we don't spam pi
@@ -111,6 +138,7 @@ class MicrobitHunterController(object):
         self.send_to_pi(
             MICROBIT_CODES['ready']
         )
+        microbit.display.show(microbit.Image.GHOST)
         while True:
             self.device_listen()
             microbit.sleep(self.loop_delay)

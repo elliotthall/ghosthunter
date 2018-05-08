@@ -384,9 +384,10 @@ class HunterUwbMicrobit(HunterBLE):
 
     def reset_microbit(self):
         """Send a reset command to the attached micro:bit"""
-        self.send_microbit_serial(self.microbit_serial,
-                                  microbit_utils.MICROBIT_CODES['reset']
-                                  )
+        self.microbit_serial.write('{}::{}'.format(
+            microbit_utils.MICROBIT_CODES['reset'],
+            0
+        ))
 
     def reset_uwb(self):
         """ Send a reset command to the DWM board"""
