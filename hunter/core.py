@@ -324,6 +324,11 @@ class HunterUwbMicrobit(HunterBLE):
         # Send an id message, verify this is a DWM
         first_conn.write(uwb.DWM_CFG_GET_MSG)
         return_type = first_conn.read()
+        # Flush for safety
+        first_conn.reset_input_buffer()
+        first_conn.reset_output_buffer()
+        second_conn.reset_output_buffer()
+        second_conn.reset_input_buffer()
         if (int.from_bytes(return_type, byteorder='little')
                 == uwb.DWM_RETURN_BYTE):
             # Yes, assign to uwb
