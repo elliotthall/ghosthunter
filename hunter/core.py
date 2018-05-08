@@ -359,34 +359,34 @@ class HunterUwbMicrobit(HunterBLE):
             # Give boards time to reset
             time.sleep(0.3)
             # Query boards
-            # todo simplify?  Timeout?
-            tasks = [
-                self.event_loop.run_in_executor(
-                    self.executor,
-                    functools.partial(self.read_microbit_serial,
-                                      self.microbit_serial,
-                                      None)
-                ),
-                self.event_loop.run_in_executor(
-                    self.executor,
-                    functools.partial(uwb.dwm_serial_get_cfg,
-                                      self.uwb_serial,
-                                      None)
-                )
-            ]
             try:
-                micro_result, uwb_cfg = self.event_loop.run_until_complete(
-                    asyncio.wait_for(tasks,
-                                     timeout=10,
-                                     loop=self.event_loop
-                                     )
+                micro_result = asyncio.wait_for(
+                    self.event_loop.run_in_executor(
+                        self.executor,
+                        functools.partial(self.read_microbit_serial,
+                                          self.microbit_serial,
+                                          None)
+                    ),
+
+                    timeout=10,
+                    loop=self.event_loop
                 )
                 if microbit_utils.MICROBIT_CODES['ready'] in micro_result:
-                    # Microbit ready
-                    logging.info('DWM1001-DEV ready.')
+                # Microbit ready
+                    logging.info('Micro:bit ready.')
                 else:
                     logging.error('Micro:bit startup failed!')
                     return False
+                uwb_cfg = asyncio.wait_for(
+                    self.event_loop.run_in_executor(
+                        self.executor,
+                        functools.partial(uwb.dwm_serial_get_cfg,
+                                          self.uwb_serial,
+                                          None)
+                    ),
+                    timeout=10,
+                    loop=self.event_loop
+                )
                 try:
                     # UWB confirm we got a config back and it's correct
                     # todo add further config tests
