@@ -384,7 +384,7 @@ class HunterUwbMicrobit(HunterBLE):
 
     def reset_microbit(self):
         """Send a reset command to the attached micro:bit"""
-        self.microbit_serial.write('{}::{}'.format(
+        self.microbit_serial.write('{}::{}\n'.format(
             microbit_utils.MICROBIT_CODES['reset'],
             0
         ))
