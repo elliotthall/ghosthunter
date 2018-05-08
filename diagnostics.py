@@ -1,8 +1,19 @@
+"""
+Functions to test the ghost detector hardware
+NOT unit tests, must be run on the hardware
+"""
+
 import logging
 import sys
 import time
 import serial
+import asyncio
 import hunter.peripherals.uwb.uart as uwb
+from hunter.core import HunterUwbMicrobit
+import concurrent.futures
+from concurrent.futures import CancelledError
+import hunter.exceptions as exceptions
+
 
 logging.basicConfig(stream=sys.stdout,
                     level=logging.INFO,
@@ -32,13 +43,13 @@ def uwb_diagnostics():
     """Hardware tests for the DWM1001-DEV"""
     logging.info("Opening connection on {}".format(uwb_serial_address))
     serial_connection = serial.Serial(uwb_serial_address, 115200, timeout=3)
-    # logging.info("Setting tag configuration")
-    # uwb.set_tag_cfg(serial_connection, tag_cfg)
-    # time.sleep(0.5)
-    # logging.info("Resetting board")
-    # uwb.dwm_reset(serial_connection)
-    # time.sleep(1)
-    # logging.info("Getting updated dwm config")
+    logging.info("Setting tag configuration")
+    uwb.set_tag_cfg(serial_connection, tag_cfg)
+    time.sleep(0.5)
+    logging.info("Resetting board")
+    uwb.dwm_reset(serial_connection)
+    time.sleep(1)
+    logging.info("Getting updated dwm config")
     cfg = uwb.dwm_serial_get_cfg(serial_connection)
     logging.info("DWM1001-DEV config: {}".format(cfg))
     logging.info("Location test")
@@ -46,6 +57,28 @@ def uwb_diagnostics():
     logging.info("get_loc : {}".format(loc))
     serial_connection.close()
 
+def startup_test(hunter):
+    """ Run the bootup, confirm hardware is responding"""
+    # do startup, return true if done
+    hunter.init_serial_connections()
+
+def general_function_test(hunter):
+    """ Test the general functions
+     - Get a position from the board
+     - Send a display command to the micro:bit
+     - prompt and wait for button input
+     - Acceleremoter?
+    """
+    # do startup, return true if done
+    pass
+
+# todo Add device-specifc tests when ready
 
 if __name__ == '__main__':
-    uwb_diagnostics()
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        hunter = HunterUwbMicrobit(loop, executor)
+        if startup_test(hunter):
+            general_function_test(hunter)
+
+

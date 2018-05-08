@@ -52,18 +52,20 @@ class HunterUwbMicrobit(HunterBLE):
         Since addresses are assigned in the order deivces are connected
         Test to make sure """
         # Establish connections
-        first_conn = utils.connect_serial(self.microbit_serial_address)
+        first_conn = utils.connect_serial(self.uwb_serial_address)
         second_conn = utils.connect_serial(self.microbit_serial_address)
         # Send an id message, verify this is a DWM
         first_conn.write(uwb.DWM_CFG_GET_MSG)
         return_type = first_conn.read()
         if return_type == uwb.DWM_RETURN_BYTE:
             # Yes, assign to uwb
+            logging.debug('ACM0 assigned to uwb')
             self.uwb_serial = first_conn
             self.microbit_serial = second_conn
             # todo parse the cfg get and configure here?
         else:
             # No, asssign to micro:bit
+            logging.debug('ACM1 assigned to uwb')
             self.microbit_serial = first_conn
             self.uwb_serial = second_conn
         return True
@@ -342,7 +344,9 @@ class Hunter(object):
         logging.info("Starting up...")
         self.event_loop.run_until_complete(self.server_config())
         # device specific startup tasks e.g UART connections
-        self.device_startup_tasks()
+        result = self.device_startup_tasks()
+        if not result:
+            logging.error("Device specific tasks failed!")
         for command in self.event_queue:
             asyncio.ensure_future(command)
         # Last, add the command parser
