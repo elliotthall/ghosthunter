@@ -360,33 +360,14 @@ class HunterUwbMicrobit(HunterBLE):
             time.sleep(0.3)
             # Query boards
             try:
-                micro_result = asyncio.wait_for(
-                    self.event_loop.run_in_executor(
-                        self.executor,
-                        functools.partial(self.read_microbit_serial,
-                                          self.microbit_serial,
-                                          None)
-                    ),
-
-                    timeout=10,
-                    loop=self.event_loop
-                )
+                micro_result =self.microbit_serial.readline()
                 if microbit_utils.MICROBIT_CODES['ready'] in micro_result:
                 # Microbit ready
                     logging.info('Micro:bit ready.')
                 else:
                     logging.error('Micro:bit startup failed!')
                     return False
-                uwb_cfg = asyncio.wait_for(
-                    self.event_loop.run_in_executor(
-                        self.executor,
-                        functools.partial(uwb.dwm_serial_get_cfg,
-                                          self.uwb_serial,
-                                          None)
-                    ),
-                    timeout=10,
-                    loop=self.event_loop
-                )
+                uwb_cfg = uwb.dwm_serial_get_cfg(self.uwb_serial)
                 try:
                     # UWB confirm we got a config back and it's correct
                     # todo add further config tests
