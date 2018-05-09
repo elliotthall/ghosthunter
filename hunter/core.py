@@ -14,7 +14,6 @@ from concurrent.futures import CancelledError
 import websockets
 from bluepy.btle import Scanner, BTLEException
 
-import hunter.peripherals.microbit.utils as microbit_utils
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
 
@@ -314,6 +313,23 @@ class HunterUwbMicrobit(HunterBLE):
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
 
+    MICROBIT_CODES = {
+        'ready': b'\x01',
+        'id': b'\x08',
+        'id_return': b'\x09',
+        'input': b'\x10',
+        'acc': b'\x11',
+        'toggle_acc': b'\x15',
+        'pixel': b'\x12',
+        'image': b'\x13',
+        'reset': b'\x14'
+    }
+
+    BUTTON_A = 0
+    BUTTON_B = 1
+    BUTTON_BOTH = 2
+    SEPARATOR = b'\xFF'
+
     def init_serial_connections(self):
         """Establish UART connections to UWB and Micro:bit
         Since addresses are assigned in the order deivces are connected
@@ -360,9 +376,9 @@ class HunterUwbMicrobit(HunterBLE):
             time.sleep(0.3)
             # Query boards
             try:
-                micro_result =self.microbit_serial.readline()
-                if microbit_utils.MICROBIT_CODES['ready'] in micro_result:
-                # Microbit ready
+                micro_result = self.microbit_serial.readline()
+                if self.MICROBIT_CODES['ready'] in micro_result:
+                    # Microbit ready
                     logging.info('Micro:bit ready.')
                 else:
                     logging.error('Micro:bit startup failed!')
@@ -384,22 +400,46 @@ class HunterUwbMicrobit(HunterBLE):
 
     def reset_microbit(self):
         """Send a reset command to the attached micro:bit"""
-        self.microbit_serial.write(bytes('{}::{}\n'.format(
-            microbit_utils.MICROBIT_CODES['reset'],
+        self.send_microbit(
+            self.MICROBIT_CODES['reset'],
             0
-        ), encoding='UTF-8'))
+        )
+
+    def flush_microbit(self):
+        self.microbit_serial.reset_output_buffer()
+        self.microbit_serial.reset_input_buffer()
 
     def reset_uwb(self):
         """ Send a reset command to the DWM board"""
         uwb.dwm_reset(self.uwb_serial)
 
-    async def send_microbit_serial(self, serial_connection, message):
+    def microbit_toggle_acc(self, onoff):
+        self.send_microbit(
+            self.MICROBIT_CODES['toggle_acc'],
+            onoff
+        )
+
+    def send_microbit(self, code, message=None):
+        """Send a message to the Micro:bit in the format
+        code:separator:message:\n
+        """
+        if message is None:
+            message = b'\x00'
+        msg = [code, self.SEPARATOR, message, b'\n']
         if self.microbit_serial.is_open:
-            return self.wrap_serial(serial_connection, message)
+            self.microbit_serial.write(msg)
         else:
             logging.warning('Trying to send microbit msg over closed uart {}'.format(
                 message
             ))
+
+    # async def send_microbit_serial(self, serial_connection, message):
+    #     if self.microbit_serial.is_open:
+    #         return self.wrap_serial(serial_connection, message)
+    #     else:
+    #         logging.warning('Trying to send microbit msg over closed uart {}'.format(
+    #             message
+    #         ))
 
     async def wrap_serial(self, serial_connection, serial_function, message=None):
         """Wrap a command in a future
@@ -434,8 +474,8 @@ class HunterUwbMicrobit(HunterBLE):
         command = None
         # '{}::{}\n'
         if '{}::{}\n'.format(
-                microbit_utils.MICROBIT_CODES['input'],
-                microbit_utils.BUTTON_A
+                self.MICROBIT_CODES['input'],
+                self.BUTTON_A
         ) in message:
             # Button a pressed
             command = self.COMMAND_TRIGGER

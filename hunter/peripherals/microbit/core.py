@@ -17,7 +17,7 @@ MICROBIT_CODES = {
     'input': \x10,  # A (0), B(1) or both(2) buttons pressed
     # Accelecrometer data
     'acc': 11,
-    'toggle_acc': \x15,
+    'toggle_acc': \x14,
     # Light up a single pixel
     'pixel': \x12,
     # Image
@@ -48,7 +48,7 @@ def send_to_pi(code, value='0'):
     :param code: MICROBIT_CODE
     :param value: value such as button presse, -1 is default for no value
     """
-    microbit.uart.write(code + b'\xFF' + bytes(value,'UTF-8'))
+    microbit.uart.write(code + b'\xFF' + bytes(value,'UTF-8')+b'\n')
 
 
 def parse_pi_message():
@@ -94,14 +94,13 @@ def parse_pi_message():
             send_acc_data_active = True
 
 
-
 def send_acc_data():
     """ Get x,y,z accelerometer data
     send to Pi"""
     acc_values = microbit.accelerometer.get_values()
     send_to_pi(
        b'\x11',
-        "{},{},{}".format(
+       "{},{},{}".format(
             acc_values[0],
             acc_values[1],
             acc_values[2]

@@ -57,6 +57,30 @@ def uwb_diagnostics():
     logging.info("get_loc : {}".format(loc))
     serial_connection.close()
 
+def microbit_diagnostics(hunter):
+    # serial_connection = serial.Serial(uwb_serial_address, 115200, timeout=3)
+    logging.info("Opening Micro:Bit connection on {}".format(uwb_serial_address))
+
+    # test reset
+    hunter.flush_microbit()
+    hunter.reset_microbit()
+
+    # image
+    hunter.flush_microbit()
+    image = "500;;90009:90009:90009:90009:90009,99099:90009:90009:99099:90009"
+    m = hunter.MICROBIT_CODES['image']+b'\xFF' + bytes(image, 'utf-8') + b'\n'
+    hunter.microbit_serial.write(m)
+
+    # turn on acc
+    hunter.flush_microbit()
+    hunter.microbit_toggle_acc(1)
+
+    # get acc data
+    acc= hunter.read_microbit_serial
+    return True
+
+
+
 def startup_test(hunter):
     """ Run the bootup, confirm hardware is responding"""
     # do startup, return true if done
