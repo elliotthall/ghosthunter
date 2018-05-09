@@ -87,10 +87,12 @@ def parse_pi_message():
         microbit.display.clear()
         microbit.display.show(images, delay=int(image_delay))
     elif code == b'\x15':
+        global send_acc_data_active
         if int(value) == 0:
             send_acc_data_active = False
         else:
-            send_acc_data = True
+            send_acc_data_active = True
+
 
 
 def send_acc_data():
@@ -107,7 +109,7 @@ def send_acc_data():
     )
 
 
-def device_listen(send_acc_data=False):
+def device_listen(send_acc_data_now=False):
     """ Listen for inputs from microbit
     and messages from pi"""
     if microbit.uart.any():
@@ -129,7 +131,7 @@ def device_listen(send_acc_data=False):
         send_to_pi(b'\x10',
                    '2')
     # todo timer so we don't spam pi
-    if send_acc_data:
+    if send_acc_data_now:
         send_acc_data()
 
 
