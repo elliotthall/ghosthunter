@@ -312,6 +312,8 @@ class HunterUwbMicrobit(HunterBLE):
     microbit_serial = None
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
+    # last position object received from boad
+    uwb_pos = None
 
     MICROBIT_CODES = {
         'ready': b'\x01',
@@ -325,9 +327,9 @@ class HunterUwbMicrobit(HunterBLE):
         'reset': b'\x14'
     }
 
-    BUTTON_A = 0
-    BUTTON_B = 1
-    BUTTON_BOTH = 2
+    BUTTON_A = 1
+    BUTTON_B = 2
+    BUTTON_BOTH = 3
     SEPARATOR = b'\xFF'
 
     def init_serial_connections(self):
@@ -370,8 +372,8 @@ class HunterUwbMicrobit(HunterBLE):
             logging.error('UART connection failed!')
             return False
         else:
-            self.reset_uwb()
-            self.reset_microbit()
+            self.uwb_reset()
+            self.microbit_reset()
             # Give boards time to reset
             time.sleep(0.3)
             # Query boards
@@ -398,28 +400,22 @@ class HunterUwbMicrobit(HunterBLE):
                 logging.error('Peripheral startup timed out!')
                 return False
 
-    def reset_microbit(self):
-        """Send a reset command to the attached micro:bit"""
-        self.send_microbit(
-            self.MICROBIT_CODES['reset'],
-            0
-        )
+    # ********** Micro:Bit functions ****************
 
-    def flush_microbit(self):
-        self.microbit_serial.reset_output_buffer()
-        self.microbit_serial.reset_input_buffer()
+    def microbit_read(self):
+        """
+        If microbit port is open and data present, read and return
+        :return: line from microbit serial
+        """
+        if self.microbit_serial.is_open:
+            if self.microbit_serial.in_waiting > 0:
+                return self.microbit_serial.readline()
+            else:
+                return None
+        else:
+            logging.warning('Trying to read microbit msg over closed uart')
 
-    def reset_uwb(self):
-        """ Send a reset command to the DWM board"""
-        uwb.dwm_reset(self.uwb_serial)
-
-    def microbit_toggle_acc(self, onoff):
-        self.send_microbit(
-            self.MICROBIT_CODES['toggle_acc'],
-            onoff
-        )
-
-    def send_microbit(self, code, message=None):
+    def microbit_write(self, code, message=None):
         """Send a message to the Micro:bit in the format
         code:separator:message:\n
         """
@@ -433,6 +429,66 @@ class HunterUwbMicrobit(HunterBLE):
                 message
             ))
 
+    def microbit_reset(self):
+        """Send a reset command to the attached micro:bit"""
+        self.microbit_write(
+            self.MICROBIT_CODES['reset'],
+            0
+        )
+
+    def microbit_flush(self):
+        self.microbit_serial.reset_output_buffer()
+        self.microbit_serial.reset_input_buffer()
+
+    def microbit_toggle_acc(self, onoff):
+        self.microbit_write(
+            self.MICROBIT_CODES['toggle_acc'],
+            onoff
+        )
+
+    def parse_microbit_serial_message(self, message):
+        """Parse any messages from microbit and
+        add to command queue as necesssary
+        :param message: line from micro:bit in bytes
+        :return command from message, if present
+        """
+        command = None
+        # '{}::{}\n'
+        code = message[0:1]
+        value = str(message[2:-1], 'UTF-8')
+        if code == self.MICROBIT_CODES['input']:
+            if int(value) == self.BUTTON_A:
+                # Button a pressed
+                command = self.COMMAND_TRIGGER
+        elif code == self.MICROBIT_CODES['acc']:
+            # todo do something with accelerometer data
+            pass
+        if command:
+            self.command_queue.append(command)
+        return command
+
+    async def microbit_listen(self):
+        """ Listen for serial messages from Micro:bit, pass to parser"""
+        while True:
+            try:
+                future = self.event_loop.run_in_executor(
+                    self.executor, self.microbit_read)
+                message = await asyncio.wait_for(
+                    future, 30, loop=self.event_loop)
+                if message:
+                    logging.debug("Serial message received: {}".format(message))
+                    self.parse_microbit_serial_message(message)
+                await asyncio.sleep(0.2)
+            except CancelledError:
+                logging.debug("microbit_listern cancelled")
+                break
+            except asyncio.TimeoutError:
+                # check serial connection
+                if self.microbit_serial.is_open is False:
+                    # serial connection lost, try to reestablish
+                    self.connect_serial()
+        return None
+
     # async def send_microbit_serial(self, serial_connection, message):
     #     if self.microbit_serial.is_open:
     #         return self.wrap_serial(serial_connection, message)
@@ -440,6 +496,27 @@ class HunterUwbMicrobit(HunterBLE):
     #         logging.warning('Trying to send microbit msg over closed uart {}'.format(
     #             message
     #         ))
+
+    # *********** UWB Functions
+
+    async def uwb_get_pos(self):
+        """Get the position from uwb board over UART"""
+        # todo error trap
+        while True:
+            try:
+                self.uwb_pos = self.wrap_serial(self.uwb_serial,
+                                                uwb.dwm_serial_get_loc
+                                                )
+                await asyncio.sleep(0.2)
+            except CancelledError:
+                logging.debug("uwb_get_pos cancelled")
+                break
+            except asyncio.TimeoutError:
+                logging.error("uwb_get_pos Timeout!")
+
+    def uwb_reset(self):
+        """ Send a reset command to the DWM board"""
+        uwb.dwm_reset(self.uwb_serial)
 
     async def wrap_serial(self, serial_connection, serial_function, message=None):
         """Wrap a command in a future
@@ -468,51 +545,10 @@ class HunterUwbMicrobit(HunterBLE):
                 # serial connection lost, try to reestablish
                 serial_connection.open()
 
-    def parse_microbit_serial_message(self, message):
-        """Parse any messages from microbit and
-        add to command queue as necesssary"""
-        command = None
-        # '{}::{}\n'
-        if '{}::{}\n'.format(
-                self.MICROBIT_CODES['input'],
-                self.BUTTON_A
-        ) in message:
-            # Button a pressed
-            command = self.COMMAND_TRIGGER
-        self.command_queue.append(command)
-        return command
-
-    def read_microbit_serial(self):
-        if self.microbit_serial.is_open:
-            return self.wrap_serial(self.microbit_serial)
-        else:
-            logging.warning('Trying to read microbit msg over closed uart')
-
-    async def receive_serial_message(self):
-        """ Listen for JSON serial messages, pass to parser"""
-        while True:
-            try:
-                future = self.event_loop.run_in_executor(
-                    self.executor, self.read_microbit_serial)
-                message = await asyncio.wait_for(
-                    future, 30, loop=self.event_loop)
-                logging.debug("Serial message received: {}".format(message))
-                self.parse_microbit_serial_message(message)
-            except asyncio.TimeoutError:
-                # check serial connection
-                if self.microbit_serial.is_open is False:
-                    # serial connection lost, try to reestablish
-                    self.connect_serial()
-
     def extra_device_functions(self):
         """ Add bluetooth scan to loop"""
         device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
         device_functions.append(self.init_serial_connections())
-        device_functions.append(self.receive_serial_message())
+        device_functions.append(self.microbit_listen())
+        device_functions.append(self.uwb_get_pos())
         return device_functions
-
-    async def get_uwb_pos(self):
-        # todo error trap
-        self.wrap_serial(self.uwb_serial,
-                         uwb.dwm_serial_get_loc
-                         )

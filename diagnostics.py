@@ -59,24 +59,35 @@ def uwb_diagnostics():
 
 def microbit_diagnostics(hunter):
     # serial_connection = serial.Serial(uwb_serial_address, 115200, timeout=3)
-    logging.info("Opening Micro:Bit connection on {}".format(uwb_serial_address))
+    logging.debug("Opening Micro:Bit connection on {}".format(uwb_serial_address))
 
     # test reset
-    hunter.flush_microbit()
-    hunter.reset_microbit()
+    hunter.microbit_flush()
+    hunter.microbit_reset()
 
     # image
-    hunter.flush_microbit()
+    hunter.microbit_flush()
+    logging.debug('Testing image')
     image = "500;;90009:90009:90009:90009:90009,99099:90009:90009:99099:90009"
     m = hunter.MICROBIT_CODES['image']+b'\xFF' + bytes(image, 'utf-8') + b'\n'
     hunter.microbit_serial.write(m)
 
     # turn on acc
-    hunter.flush_microbit()
+    logging.debug('Toggle acc on')
+    hunter.microbit_flush()
     hunter.microbit_toggle_acc(1)
 
     # get acc data
-    acc= hunter.read_microbit_serial
+    acc= hunter.microbit_read()
+    # verify
+
+    logging.debug('ACC data:{}')
+    # off
+    hunter.microbit_toggle_acc(0)
+
+
+    # prompt for input test
+    hunter.microbit_flush()
     return True
 
 
