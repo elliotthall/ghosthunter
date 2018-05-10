@@ -437,10 +437,13 @@ class HunterUwbMicrobit(HunterBLE):
         )
 
     def microbit_flush(self):
+        """Flush serial buffers"""
         self.microbit_serial.reset_output_buffer()
         self.microbit_serial.reset_input_buffer()
 
     def microbit_toggle_acc(self, onoff):
+        """Tell the micro:bit to turn on/off sending accelerometer data
+        :param onoff: toggle """
         self.microbit_write(
             self.MICROBIT_CODES['toggle_acc'],
             onoff
@@ -449,6 +452,7 @@ class HunterUwbMicrobit(HunterBLE):
     def parse_microbit_serial_message(self, message):
         """Parse any messages from microbit and
         add to command queue as necesssary
+
         :param message: line from micro:bit in bytes
         :return command from message, if present
         """
@@ -497,7 +501,7 @@ class HunterUwbMicrobit(HunterBLE):
     #             message
     #         ))
 
-    # *********** UWB Functions
+    # *********** UWB Functions ***************
 
     async def uwb_get_pos(self):
         """Get the position from uwb board over UART"""
@@ -546,9 +550,11 @@ class HunterUwbMicrobit(HunterBLE):
                 serial_connection.open()
 
     def extra_device_functions(self):
-        """ Add bluetooth scan to loop"""
+        """ Add microbit, uwb listeners to loop"""
         device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
-        device_functions.append(self.init_serial_connections())
-        device_functions.append(self.microbit_listen())
-        device_functions.append(self.uwb_get_pos())
-        return device_functions
+        return device_functions + [
+            self.init_serial_connections(),
+            self.microbit_listen(),
+            self.uwb_get_pos()
+        ]
+
