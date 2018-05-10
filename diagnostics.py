@@ -16,7 +16,7 @@ import hunter.exceptions as exceptions
 
 
 logging.basicConfig(stream=sys.stdout,
-                    level=logging.INFO,
+                    level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s:%(message)s')
 
 
@@ -95,7 +95,8 @@ def microbit_diagnostics(hunter):
 def startup_test(hunter):
     """ Run the bootup, confirm hardware is responding"""
     # do startup, return true if done
-    hunter.init_serial_connections()
+    #hunter.init_serial_connections()
+    hunter.bootup()
 
 def general_function_test(hunter):
     """ Test the general functions
@@ -113,7 +114,11 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         hunter = HunterUwbMicrobit(loop, executor)
-        if startup_test(hunter):
-            general_function_test(hunter)
-
-
+        hunter.hunt_url = 'ws://demos.kaazing.com/echo'
+        hunter.MAC = '78:4f:43:6c:cc:0f'
+        try:
+            if startup_test(hunter):
+                general_function_test(hunter)
+        finally:
+            hunter.shutdown()
+            loop.close()

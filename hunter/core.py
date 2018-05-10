@@ -72,6 +72,7 @@ class Hunter(object):
     command_queue = list()
 
     def __init__(self, event_loop=None, **kwargs):
+        # todo get devices MAC on init
         if event_loop is None:
             self.event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.event_loop)
@@ -420,10 +421,11 @@ class HunterUwbMicrobit(HunterBLE):
         code:separator:message:\n
         """
         if message is None:
-            message = 0
-        msg = [code, self.SEPARATOR, bytes(message, 'utf-8'), b'\n']
+            message = '0'
+        
         if self.microbit_serial.is_open:
-            self.microbit_serial.write(msg)
+            self.microbit_serial.write(
+                code + self.SEPARATOR + bytes(message, 'utf-8') + b'\n')
         else:
             logging.warning('Trying to send microbit msg over closed uart {}'.format(
                 message
@@ -433,7 +435,7 @@ class HunterUwbMicrobit(HunterBLE):
         """Send a reset command to the attached micro:bit"""
         self.microbit_write(
             self.MICROBIT_CODES['reset'],
-            0
+            '0'
         )
 
     def microbit_flush(self):
