@@ -420,8 +420,8 @@ class HunterUwbMicrobit(HunterBLE):
         code:separator:message:\n
         """
         if message is None:
-            message = b'\x00'
-        msg = [code, self.SEPARATOR, message, b'\n']
+            message = 0
+        msg = [code, self.SEPARATOR, bytes(message, 'utf-8'), b'\n']
         if self.microbit_serial.is_open:
             self.microbit_serial.write(msg)
         else:
