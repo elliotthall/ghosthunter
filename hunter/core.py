@@ -422,12 +422,16 @@ class HunterUwbMicrobit(HunterBLE):
         else:
             logging.warning('Trying to read microbit msg over closed uart')
 
-    def microbit_write(self, code, message=None):
-        """Send a message to the Micro:bit in the format
-        code:separator:message:\n
+    def microbit_write(self, code, message='0'):
         """
-        if message is None:
-            message = '0'
+        Send a message to the Micro:bit in the format
+        code:separator:message:\n
+        :type message:str
+        :type code:bytes
+        :param code:
+        :param message:
+        :return:
+        """
         
         if self.microbit_serial.is_open:
             self.microbit_serial.write(

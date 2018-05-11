@@ -52,7 +52,7 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         # distance between point of detection and centre of thing geometry
         distance = Point(x, y).distance(thing.centroid)
         # create microbit detection animation based on distance
-        leds = math.ceil(432 / 500 * 25)
+        leds = int(math.ceil(distance / self.device_range * 25))
         # send to microbit for display
         # todo make this COOLER
         canvas = [['0'] * 5 for x in range(0, 5)]
@@ -64,12 +64,13 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             image += "".join(canvas[y])
             if y != 4:
                 image += ":"
-
-        pass
+        self.microbit_write(self.MICROBIT_CODES['image'], image)
+        return True
 
     async def trigger(self):
         """ Time device 'cooldown' after detection attempt """
         logging.info("triggering...")
+        # todo Trigger animation?
         # todo Fresh get pos here?
         pos = self.uwb_pos
         if pos:
