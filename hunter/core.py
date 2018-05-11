@@ -72,6 +72,7 @@ class Hunter(object):
     command_queue = list()
 
     def __init__(self, event_loop=None, **kwargs):
+        # todo create logger to record only hunt events such as detection
         # todo get devices MAC on init
         if event_loop is None:
             self.event_loop = asyncio.new_event_loop()
@@ -313,8 +314,13 @@ class HunterUwbMicrobit(HunterBLE):
     microbit_serial = None
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
-    # last position object received from boad
+    # last position object received from DWM board
     uwb_pos = None
+    # These are shapely geometries of things the device can detect
+    # dict of lists split by level/room, updated by server as hunt develops
+    detectable_things = None
+    # Current level - in scratch this will be the room we're in
+    current_level = 0
 
     MICROBIT_CODES = {
         'ready': b'\x01',

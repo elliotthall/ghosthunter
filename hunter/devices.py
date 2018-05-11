@@ -1,17 +1,91 @@
 """ Specific ghost detectors derived from the core library.
 These devices are what the student will select and use."""
 import asyncio
-import concurrent.futures
-import hunter.core as hunter_core
-import hunter.peripherals.uwb
 import logging
+import math
 from concurrent.futures import CancelledError
+
+from shapely.geometry import Point
+
+import hunter.core as hunter_core
+
 
 class ProximityDevice(hunter_core.HunterUwbMicrobit):
     """Ping-type radar detection.
     Short range(?), 360 degree FOV
     Detect anomalies and use micro:bit LEDs to display
     their rough proximity in a hotter/colder fashion"""
+    # Device detection range (in cm)
+    device_range = 500
+
+    trigger_animation = ("00000:00000:00300:00000:00000,"
+                         + "00000:07770:07070:07770:00000,"
+                         + "99999:90009:90009:90009:99999")
+
+    def detect_things(self, x, y, level=0):
+        """
+        Use shapely to find 'detectable' objects
+        :param level: to separate storeys of a building, or rooms
+        :return: features found, None if nothing found
+        """
+        detected_things = list()
+        if self.uwb_pos:
+            # Make a point from current coordinates, buffer it
+            detection_zone = Point(x, y).buffer(self.device_range)
+            # Get all detectable features for this level
+            for thing in self.detectable_things[level]:
+                if detection_zone.intersects(thing):
+                    detected_things.append(thing)
+        # todo sort by nearest?
+        return detected_things
+
+    # todo async?
+    def thing_found(self, x, y, thing):
+        """
+        Display that a thing has been found using Micro:bit
+        - log thing found in hunt log
+        :param x: x pos at time of detection
+        :param y: y pos at time of detection
+        :param thing: thing detected
+        :return: true when done
+        """
+        # distance between point of detection and centre of thing geometry
+        distance = Point(x, y).distance(thing.centroid)
+        # create microbit detection animation based on distance
+        leds = math.ceil(432 / 500 * 25)
+        # send to microbit for display
+        # todo make this COOLER
+        canvas = [['0'] * 5 for x in range(0, 5)]
+        for x in range(0, leds):
+            row = int(math.floor(x / 5))
+            canvas[row][x - row * 5] = '9'
+        image = ""
+        for y in range(0, 5):
+            image += "".join(canvas[y])
+            if y != 4:
+                image += ":"
+
+        pass
+
+    async def trigger(self):
+        """ Time device 'cooldown' after detection attempt """
+        logging.info("triggering...")
+        # todo Fresh get pos here?
+        pos = self.uwb_pos
+        if pos:
+            # Compare current position in a 360 circle, see if intersects with any phenomena
+            detected_things = self.detect_things(
+                pos['position']['x'],
+                pos['position']['y'],
+                self.current_level
+            )
+            if len(detected_things) > 0:
+                # Something found, display proximity to nearest thing
+                self.thing_found(detected_things[0])
+        await asyncio.sleep(self.device_interval)
+        self.device_ready = True
+        logging.info("Recharged and ready")
+        return True
 
     async def execute_commands(self):
         """
@@ -35,6 +109,3 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             logging.debug("Stopping main loop")
         self.cancel_events()
         return True
-
-
-

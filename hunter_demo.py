@@ -10,8 +10,6 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class HunterTest(HunterUwbMicrobit):
     device_interval = 5
     hunt_url = 'ws://demos.kaazing.com/echo'
-    # hunt_url = 'ws://127.0.0.1:8000/hunt/1/'
-
     MAC = '78:4f:43:6c:cc:0f'
 
     async def get_device_input(self):
