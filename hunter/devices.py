@@ -31,7 +31,8 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         detected_things = list()
         if self.uwb_pos and self.detectable_things:
             # Make a point from current coordinates, buffer it
-            detection_zone = Point(x, y).buffer(self.device_range)
+            detection_zone = Point(
+                float(x), float(y)).buffer(self.device_range)
             # Get all detectable features for this level
             for thing in self.detectable_things[level]:
                 if detection_zone.intersects(thing['geometry']):
@@ -45,18 +46,23 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         return detected_things
 
     # todo async?
-    def thing_found(self, x, y, detected_thing):
+    def thing_found(self, detected_thing):
         """
         Display that a thing has been found using Micro:bit
         - log thing found in hunt log
-        :param x: x pos at time of detection
-        :param y: y pos at time of detection
         :param detected_thing: thing detected
         :return: true when done
         """
 
         # create microbit detection animation based on distance
-        leds = int(math.ceil(1 - (detected_thing['distance'] / self.device_range) * 25))
+        leds = int(
+            math.ceil(
+                (1 - (detected_thing['distance'] / self.device_range)) * 25
+                )
+        )
+        if leds == 0:
+            # minimum reading of one
+            leds = 1
         # send to microbit for display
         # todo make this COOLER
         canvas = [['0'] * 5 for x in range(0, 5)]

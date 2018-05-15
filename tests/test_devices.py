@@ -3,7 +3,7 @@ Test package for specific hunter devices.  Proximity only so far.
 """
 import asyncio
 import unittest
-
+from unittest.mock import patch, call
 from shapely.geometry import Point
 
 import hunter.devices as devices
@@ -27,9 +27,6 @@ class ProximityDevice_test(unittest.TestCase):
     def tearDown(self):
         if not asyncio.get_event_loop().is_closed():
             asyncio.get_event_loop().close()
-
-    def test_thing_found(self):
-        pass
 
     def test_detect_things(self):
         detected_things = self.hunter.detect_things(
@@ -77,6 +74,56 @@ class ProximityDevice_test(unittest.TestCase):
         self.assertEqual(hunter_position.distance(detected_things[0]['geometry']),
                          300
                          )
+
+    @patch('hunter.devices.ProximityDevice.microbit_serial')
+    def test_thing_found(self, mock_serial):
+            expected_image = [
+                call(b'\x13\xff99999:99999:00000:00000:00000\n'),
+                call(b'\x13\xff90000:00000:00000:00000:00000\n'),
+                call(b'\x13\xff99999:99999:99999:99999:99999\n')
+            ]
+            detected_things = [
+                    {'id': 0,
+                     'geometry': Point(300, 0),
+                     'level': 0,
+                     'distance': 300.0
+                     },
+                     {'id': 0,
+                     'geometry': Point(500, 0),
+                     'level': 0,
+                     'distance': 500.0
+                     },
+                     {'id': 0,
+                     'geometry': Point(300, 0),
+                     'level': 0,
+                     'distance': 0.0
+                     }
+            ]            
+            self.hunter.thing_found(detected_things[0])
+            self.hunter.thing_found(detected_things[1])
+            self.hunter.thing_found(detected_things[2])
+            # Should return a 10-led reading
+            called = mock_serial.write.call_args_list
+            self.assertEqual(
+                called[0],
+                expected_image[0]
+                )
+            # minimum reading of one.
+            self.assertEqual(
+                called[1],
+                expected_image[1]
+                )
+
+            # max reading of 25
+            self.assertEqual(
+                called[2],
+                expected_image[2]
+                )
+            
+            
+            
+
+
 
         # shapes?
 
