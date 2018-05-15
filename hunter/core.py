@@ -565,7 +565,6 @@ class HunterUwbMicrobit(HunterBLE):
         """ Add microbit, uwb listeners to loop"""
         device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
         return device_functions + [
-            self.init_serial_connections(),
             self.microbit_listen(),
             self.uwb_get_pos()
         ]

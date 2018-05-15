@@ -1,7 +1,7 @@
 requests
 websockets
-#bluepy
-git+https://github.com/IanHarvey/bluepy.git
+#git+https://github.com/IanHarvey/bluepy.git
+bluepy
 pyserial
 uflash
 pytest

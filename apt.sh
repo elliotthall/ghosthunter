@@ -6,6 +6,6 @@
 #Get packages from apt.sh
 sudo apt-get install python-dev python-scapy blueZ libglib2.0-dev
 # May not be needed pkg-config libboost-python-dev libboost-thread-dev libbluetooth-dev >= 4.101
-sudo apt-get install python-pip python-dev ipython python3-pip
+sudo apt-get install python-pip python-dev ipython python3-pip libgeos++ python3-shapely
 
 # install requirements.txt
