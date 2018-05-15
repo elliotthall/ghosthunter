@@ -17,9 +17,9 @@ class ProximityDevice_test(unittest.TestCase):
         self.hunter = devices.ProximityDevice(loop)
         self.hunter.uwb_pos = {
             'position': {
-                'x': 0,
-                'y': 0,
-                'z': 0,
+                'x': 0.0,
+                'y': 0.0,
+                'z': 0.0,
                 'qf': 100,
             }
         }
@@ -33,8 +33,8 @@ class ProximityDevice_test(unittest.TestCase):
 
     def test_detect_things(self):
         detected_things = self.hunter.detect_things(
-            self, self.hunter.uwb_pos['x]'],
-            self.hunter.uwb_pos['y'])
+            self.hunter.uwb_pos['position']['x'],
+            self.hunter.uwb_pos['position']['y'])
         # deal with nothing in detectable things
         self.assertEqual(len(detected_things), 0)
 
@@ -44,10 +44,10 @@ class ProximityDevice_test(unittest.TestCase):
                  'geometry': Point(300, 0),
                  'level': 0}
             ]
-        }
+        }        
         detected_things = self.hunter.detect_things(
-            self, self.hunter.uwb_pos['x]'],
-            self.hunter.uwb_pos['y'])
+            self.hunter.uwb_pos['position']['x'],
+            self.hunter.uwb_pos['position']['y'])
         # found at least one thing
         self.assertGreaterEqual(len(detected_things), 1)
         # thing found has id 0
@@ -55,8 +55,8 @@ class ProximityDevice_test(unittest.TestCase):
         # one point too far away
         self.hunter.detectable_things[0][0]['geometry'] = Point(600, 0)
         detected_things = self.hunter.detect_things(
-            self, self.hunter.uwb_pos['x]'],
-            self.hunter.uwb_pos['y'])
+            self.hunter.uwb_pos['position']['x'],
+            self.hunter.uwb_pos['position']['y'])
         self.assertEqual(len(detected_things), 0)
         self.hunter.detectable_things[0][0]['geometry'] = Point(300, 0)
         self.hunter.detectable_things[0].append(
@@ -67,12 +67,12 @@ class ProximityDevice_test(unittest.TestCase):
 
         # two valid points, make sure nearest is returned first
         detected_things = self.hunter.detect_things(
-            self, self.hunter.uwb_pos['x]'],
-            self.hunter.uwb_pos['y'])
+            self.hunter.uwb_pos['position']['x'],
+            self.hunter.uwb_pos['position']['y'])
         self.assertGreaterEqual(len(detected_things), 2)
         hunter_position = Point(
-            self.hunter.uwb_pos['x]'],
-            self.hunter.uwb_pos['y']
+            self.hunter.uwb_pos['position']['x'],
+            self.hunter.uwb_pos['position']['y']
         )
         self.assertEqual(hunter_position.distance(detected_things[0]['geometry']),
                          300

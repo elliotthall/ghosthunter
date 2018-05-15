@@ -37,8 +37,9 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
                 if detection_zone.intersects(thing['geometry']):
                     detected_thing = thing
                     # distance between point of detection and player
-                    detected_thing['distance'] = Point(x, y).distance(thing['geometry'])
-                    detected_things.append()
+                    detected_thing['distance'] = Point(
+                        x, y).distance(thing['geometry'])
+                    detected_things.append(detected_thing)
         # sort by nearest
         detected_things = sorted(detected_things, key=itemgetter('distance'))
         return detected_things
