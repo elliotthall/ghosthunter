@@ -2,7 +2,7 @@
 # Ghost Hunter for Pi startup script
 # Version 0.1
 # Elliott Hall
-GHOSTHUNT_DIR="/home/pi/projects/ghosthunt"
+GHOSTHUNT_DIR="/home/pi/ghosthunt"
 
 # Update sources
 cd "$GHOSTHUNT_DIR/ghosthunter"

@@ -16,6 +16,7 @@ from bluepy.btle import Scanner, BTLEException
 
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
+import pdb
 
 # from bluepy.btle import Scanner
 
@@ -74,6 +75,11 @@ class Hunter(object):
     def __init__(self, event_loop=None, **kwargs):
         # todo create logger to record only hunt events such as detection
         # todo get devices MAC on init
+        if 'hunt_url' in kwargs:
+            self.hunt_url = kwargs['hunt_url']
+        if 'MAC' in kwargs:
+            self.MAC = kwargs['MAC']
+
         if event_loop is None:
             self.event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.event_loop)
@@ -164,6 +170,7 @@ class Hunter(object):
         execute_task.add_done_callback(stop_loop_callback)
         # start the main event loop
         self.device_ready = True
+        logging.info("Startup complete, running loop...")
         if run_forever:
             self.event_loop.run_forever()
         return True
@@ -179,12 +186,9 @@ class Hunter(object):
             asyncio.gather(*asyncio.Task.all_tasks()))
         return True
 
-    async def trigger(self):
-        """ Time device 'cooldown' after detection attempt """
-        logging.info("triggering...")
-        await asyncio.sleep(self.device_interval)
-        self.device_ready = True
-        logging.info("Recharged and ready")
+    def trigger(self):
+        """ Do whatever this device does. """
+        logging.info("triggering...")        
         return True
 
     def cancel_events(self):
@@ -206,8 +210,12 @@ class Hunter(object):
                         if self.COMMAND_SHUTDOWN in self.command_queue:
                             break
                         elif self.COMMAND_TRIGGER in self.command_queue:
-                            self.command_queue.remove(self.COMMAND_TRIGGER)
-                            self.trigger()
+                            if self.device_ready:
+                                self.command_queue.remove(self.COMMAND_TRIGGER)
+                                self.trigger()
+                                await asyncio.sleep(self.device_interval)
+                                self.device_ready = True
+                                logging.info("Recharged and ready")
                     await asyncio.sleep(0.1)
                 except CancelledError:
                     logging.debug("execute_commands cancelled")
@@ -415,8 +423,9 @@ class HunterUwbMicrobit(HunterBLE):
         :return: line from microbit serial
         """
         if self.microbit_serial.is_open:
-            if self.microbit_serial.in_waiting > 0:
-                return self.microbit_serial.readline()
+            if self.microbit_serial.in_waiting > 0:                
+                line = self.microbit_serial.readline()                
+                return line
             else:
                 return None
         else:
@@ -469,13 +478,15 @@ class HunterUwbMicrobit(HunterBLE):
         :return command from message, if present
         """
         command = None
-        # '{}::{}\n'
+        # '{}::{}\n'        
         code = message[0:1]
         value = str(message[2:-1], 'UTF-8')
         if code == self.MICROBIT_CODES['input']:
             if int(value) == self.BUTTON_A:
                 # Button a pressed
                 command = self.COMMAND_TRIGGER
+            if int(value) == self.BUTTON_B:
+                command = self.COMMAND_SHUTDOWN
         elif code == self.MICROBIT_CODES['acc']:
             # todo do something with accelerometer data
             pass
@@ -494,7 +505,7 @@ class HunterUwbMicrobit(HunterBLE):
                 if message:
                     logging.debug("Serial message received: {}".format(message))
                     self.parse_microbit_serial_message(message)
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.1)
             except CancelledError:
                 logging.debug("microbit_listern cancelled")
                 break
@@ -519,10 +530,17 @@ class HunterUwbMicrobit(HunterBLE):
         """Get the position from uwb board over UART"""
         # todo error trap
         while True:
-            try:
-                self.uwb_pos = self.wrap_serial(self.uwb_serial,
-                                                uwb.dwm_serial_get_loc
-                                                )
+            try:                
+                # todo disable for now, not sure what the best way is
+                # self.uwb_pos = self.wrap_serial(self.uwb_serial,
+                #                                uwb.dwm_serial_get_loc
+                #                                )
+                future = self.event_loop.run_in_executor(
+                    self.executor,
+                    functools.partial(uwb.dwm_serial_get_loc, self.uwb_serial)
+                )
+                result = await asyncio.wait_for(future, 30, loop=self.event_loop)                
+                self.uwb_pos = result
                 await asyncio.sleep(0.2)
             except CancelledError:
                 logging.debug("uwb_get_pos cancelled")
@@ -541,6 +559,7 @@ class HunterUwbMicrobit(HunterBLE):
         :param serial_connection: uart connection for function
         :param message: message to send, none if receive
         """
+        pdb.set_trace()
         try:
             if message:
                 future = self.event_loop.run_in_executor(
@@ -552,7 +571,9 @@ class HunterUwbMicrobit(HunterBLE):
                     self.executor,
                     functools.partial(serial_function, serial_connection)
                 )
-            return await asyncio.wait_for(future, 30, loop=self.event_loop)
+            result = await asyncio.wait_for(future, 30, loop=self.event_loop)
+            
+            return result
         # except TypeError as e:
         #     logging.error("Bad microbit sent message: {}".format(e))
         except asyncio.TimeoutError:

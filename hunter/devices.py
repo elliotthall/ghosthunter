@@ -6,6 +6,7 @@ import math
 from concurrent.futures import CancelledError
 from operator import itemgetter
 from shapely.geometry import Point
+import pdb
 
 import hunter.core as hunter_core
 
@@ -18,9 +19,9 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
     # Device detection range (in cm)
     device_range = 500
 
-    trigger_animation = ("00000:00000:00300:00000:00000,"
-                         + "00000:07770:07070:07770:00000,"
-                         + "99999:90009:90009:90009:99999")
+    trigger_animation = ("00000:00000:00300:00000:00000," +
+                         "00000:07770:07070:07770:00000," +
+                         "99999:90009:90009:90009:99999")
 
     def detect_things(self, x, y, level=0):
         """
@@ -69,7 +70,8 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         for x in range(0, leds):
             row = int(math.floor(x / 5))
             canvas[row][x - row * 5] = '9'
-        image = ""
+        # no delay
+        image = "0;;"
         for y in range(0, 5):
             image += "".join(canvas[y])
             if y != 4:
@@ -77,14 +79,14 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         self.microbit_write(self.MICROBIT_CODES['image'], image)
         return True
 
-    async def trigger(self):
+    def trigger(self):
         """ Time device 'cooldown' after detection attempt """
         logging.info("triggering...")
         # todo Trigger animation?
         # todo Fresh get pos here?
         pos = self.uwb_pos
         if pos:
-            # Compare current position in a 360 circle, see if intersects with any phenomena
+            # Compare current position in a 360 circle, see if intersects with any phenomena            
             detected_things = self.detect_things(
                 pos['position']['x'],
                 pos['position']['y'],
@@ -93,30 +95,7 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 self.thing_found(detected_things[0])
-        await asyncio.sleep(self.device_interval)
+        # await asyncio.sleep(self.device_interval)
         self.device_ready = True
         logging.info("Recharged and ready")
-        return True
-
-    async def execute_commands(self):
-        """
-        """
-        try:
-            while True:
-                try:
-                    # Are there waiting commands?
-                    if len(self.command_queue) > 0:
-                        # Parse commands
-                        if self.COMMAND_SHUTDOWN in self.command_queue:
-                            break
-                        elif self.COMMAND_TRIGGER in self.command_queue:
-                            self.command_queue.remove(self.COMMAND_TRIGGER)
-                            self.trigger()
-                    await asyncio.sleep(0.1)
-                except CancelledError:
-                    logging.debug("execute_commands cancelled")
-                    break
-        finally:
-            logging.debug("Stopping main loop")
-        self.cancel_events()
         return True

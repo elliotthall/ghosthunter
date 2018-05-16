@@ -78,9 +78,9 @@ class ProximityDevice_test(unittest.TestCase):
     @patch('hunter.devices.ProximityDevice.microbit_serial')
     def test_thing_found(self, mock_serial):
             expected_image = [
-                call(b'\x13\xff99999:99999:00000:00000:00000\n'),
-                call(b'\x13\xff90000:00000:00000:00000:00000\n'),
-                call(b'\x13\xff99999:99999:99999:99999:99999\n')
+                call(b'\x13\xff0;;99999:99999:00000:00000:00000\n'),
+                call(b'\x13\xff0;;90000:00000:00000:00000:00000\n'),
+                call(b'\x13\xff0;;99999:99999:99999:99999:99999\n')
             ]
             detected_things = [
                     {'id': 0,
