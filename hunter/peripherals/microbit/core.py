@@ -41,14 +41,13 @@ send_acc_data_delay = 5
 device_id = 1
 
 
-
 def send_to_pi(code, value='0'):
     """Send a message to the pi
     in the format CODE::VALUE
     :param code: MICROBIT_CODE
     :param value: value such as button presse, -1 is default for no value
     """
-    microbit.uart.write(code + b'\xFF' + bytes(value,'UTF-8')+b'\n')
+    microbit.uart.write(code + b'\xFF' + bytes(value, 'UTF-8')+b'\n')
 
 
 def parse_pi_message():
