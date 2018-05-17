@@ -16,8 +16,8 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
     Short range(?), 360 degree FOV
     Detect anomalies and use micro:bit LEDs to display
     their rough proximity in a hotter/colder fashion"""
-    # Device detection range (in cm)
-    device_range = 500
+    # Device detection range (in mm)
+    device_range = 5000
 
     trigger_animation = ("00000:00000:00300:00000:00000," +
                          "00000:07770:07070:07770:00000," +
@@ -31,6 +31,7 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         """
         detected_things = list()
         if self.uwb_pos and self.detectable_things:
+            
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
                 float(x), float(y)).buffer(self.device_range)
@@ -76,6 +77,12 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             image += "".join(canvas[y])
             if y != 4:
                 image += ":"
+        logging.info("Thing found, nearest: id {} at {}cm away, {} leds".format(
+                detected_thing['id'],
+                detected_thing['distance'],
+                leds
+            )
+        )
         self.microbit_write(self.MICROBIT_CODES['image'], image)
         return True
 
@@ -95,7 +102,4 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 self.thing_found(detected_things[0])
-        # await asyncio.sleep(self.device_interval)
-        self.device_ready = True
-        logging.info("Recharged and ready")
         return True

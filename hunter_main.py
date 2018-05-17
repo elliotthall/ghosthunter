@@ -16,9 +16,6 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 def main():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        
-        
-        
         hunter = ProximityDevice(loop, executor,
             hunt_url='ws://demos.kaazing.com/echo',
             MAC='78:4f:43:6c:cc:0f'
@@ -26,10 +23,18 @@ def main():
         hunter.detectable_things = {
             0: [
                 {'id': 0,
-                 'geometry': Point(300, 0),
-                 'level': 0}
+                 'geometry': Point(3650, 3010),
+                 'level': 0}                 
             ]
         }
+        """
+        {'id': 1,
+                 'geometry': Point(40, 467).buffer(50),
+                 'level': 0},
+                 {'id': 2,
+                 'geometry': Point(569, 778),
+                 'level': 0},
+                 """
         websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
         hunter.websocket = websocket        
         try:
