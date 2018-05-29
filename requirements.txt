@@ -9,3 +9,5 @@ asynctest
 spidev
 bitstring
 shapely
+aiohttp
+aiodns

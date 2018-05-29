@@ -8,6 +8,7 @@ All hunter devices should be derived from these objects.
 import asyncio
 import functools
 import logging
+import pdb
 import time
 from concurrent.futures import CancelledError
 
@@ -16,7 +17,6 @@ from bluepy.btle import Scanner, BTLEException
 
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
-import pdb
 
 # from bluepy.btle import Scanner
 
@@ -188,7 +188,7 @@ class Hunter(object):
 
     def trigger(self):
         """ Do whatever this device does. """
-        logging.info("triggering...")        
+        logging.info("triggering...")
         return True
 
     def cancel_events(self):
@@ -423,8 +423,8 @@ class HunterUwbMicrobit(HunterBLE):
         :return: line from microbit serial
         """
         if self.microbit_serial.is_open:
-            if self.microbit_serial.in_waiting > 0:                
-                line = self.microbit_serial.readline()                
+            if self.microbit_serial.in_waiting > 0:
+                line = self.microbit_serial.readline()
                 return line
             else:
                 return None
@@ -441,14 +441,15 @@ class HunterUwbMicrobit(HunterBLE):
         :param message:
         :return:
         """
-        
+
         if self.microbit_serial.is_open:
             self.microbit_serial.write(
                 code + self.SEPARATOR + bytes(message, 'utf-8') + b'\n')
         else:
-            logging.warning('Trying to send microbit msg over closed uart {}'.format(
-                message
-            ))
+            logging.warning(
+                'Trying to send microbit msg over closed uart {}'.format(
+                    message
+                ))
 
     def microbit_reset(self):
         """Send a reset command to the attached micro:bit"""
@@ -503,7 +504,8 @@ class HunterUwbMicrobit(HunterBLE):
                 message = await asyncio.wait_for(
                     future, 30, loop=self.event_loop)
                 if message:
-                    logging.debug("Serial message received: {}".format(message))
+                    logging.debug(
+                        "Serial message received: {}".format(message))
                     self.parse_microbit_serial_message(message)
                 await asyncio.sleep(0.1)
             except CancelledError:
@@ -520,7 +522,8 @@ class HunterUwbMicrobit(HunterBLE):
     #     if self.microbit_serial.is_open:
     #         return self.wrap_serial(serial_connection, message)
     #     else:
-    #         logging.warning('Trying to send microbit msg over closed uart {}'.format(
+    #         logging.warning('Trying to send microbit msg over closed uart
+    # {}'.format(
     #             message
     #         ))
 
@@ -530,7 +533,7 @@ class HunterUwbMicrobit(HunterBLE):
         """Get the position from uwb board over UART"""
         # todo error trap
         while True:
-            try:                
+            try:
                 # todo disable for now, not sure what the best way is
                 # self.uwb_pos = self.wrap_serial(self.uwb_serial,
                 #                                uwb.dwm_serial_get_loc
@@ -539,7 +542,15 @@ class HunterUwbMicrobit(HunterBLE):
                     self.executor,
                     functools.partial(uwb.dwm_serial_get_loc, self.uwb_serial)
                 )
-                result = await asyncio.wait_for(future, 30, loop=self.event_loop)                
+                result = await asyncio.wait_for(future, 30,
+                                                loop=self.event_loop)
+                if (float(self.uwb['position']['x']) != float(
+                        result['position']['x']) or
+                        float(self.uwb['position']['y']) != float(
+                            result['position']['y'])
+                ):
+                    self.uwb_pos_updated(result)
+
                 self.uwb_pos = result
                 await asyncio.sleep(0.2)
             except CancelledError:
@@ -548,11 +559,15 @@ class HunterUwbMicrobit(HunterBLE):
             except asyncio.TimeoutError:
                 logging.error("uwb_get_pos Timeout!")
 
+    async def uwb_pos_updated(self, new_position):
+        pass
+
     def uwb_reset(self):
         """ Send a reset command to the DWM board"""
         uwb.dwm_reset(self.uwb_serial)
 
-    async def wrap_serial(self, serial_connection, serial_function, message=None):
+    async def wrap_serial(self, serial_connection, serial_function,
+                          message=None):
         """Wrap a command in a future
         used for uart communication
         :param serial_function: uart function
@@ -564,7 +579,8 @@ class HunterUwbMicrobit(HunterBLE):
             if message:
                 future = self.event_loop.run_in_executor(
                     self.executor,
-                    functools.partial(serial_function, serial_connection, message)
+                    functools.partial(serial_function, serial_connection,
+                                      message)
                 )
             else:
                 future = self.event_loop.run_in_executor(
@@ -572,7 +588,7 @@ class HunterUwbMicrobit(HunterBLE):
                     functools.partial(serial_function, serial_connection)
                 )
             result = await asyncio.wait_for(future, 30, loop=self.event_loop)
-            
+
             return result
         # except TypeError as e:
         #     logging.error("Bad microbit sent message: {}".format(e))
@@ -584,9 +600,9 @@ class HunterUwbMicrobit(HunterBLE):
 
     def extra_device_functions(self):
         """ Add microbit, uwb listeners to loop"""
-        device_functions = super(HunterUwbMicrobit, self).extra_device_functions()
+        device_functions = super(HunterUwbMicrobit,
+                                 self).extra_device_functions()
         return device_functions + [
             self.microbit_listen(),
             self.uwb_get_pos()
         ]
-
