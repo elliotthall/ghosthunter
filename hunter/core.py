@@ -544,12 +544,17 @@ class HunterUwbMicrobit(HunterBLE):
                 )
                 result = await asyncio.wait_for(future, 30,
                                                 loop=self.event_loop)
-                if (float(self.uwb['position']['x']) != float(
-                        result['position']['x']) or
-                        float(self.uwb['position']['y']) != float(
-                            result['position']['y'])
+                if (result and self.uwb_pos is None) or (
+                    self.uwb_pos and (
+                        (float(self.uwb_pos['position']['x']) != float(
+                            result['position']['x']) or
+                            float(self.uwb_pos['position']['y']) != float(
+                                result['position']['y'])
+                         )
+                    )
                 ):
-                    self.uwb_pos_updated(result)
+                    
+                    await self.uwb_pos_updated(result)
 
                 self.uwb_pos = result
                 await asyncio.sleep(0.2)
