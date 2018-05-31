@@ -60,6 +60,137 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 'href': 'wss://ghost-hunt.mozilla-iot.org/things/virtual-things-2'}]}]
 """
 
+# This will go into poltergeist when ready
+class PoltergeistEvent(object):
+    """Base class for a poltergeist event, something done by the ghost with
+     the smart home technology"""
+    # Can this effect happen right now?
+    active = False
+    # has it already happened?
+    triggered = False
+    # Number of times it can happen, -1 for infinite
+    trigger_limit = 1
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def check_trigger(self, *args, **kwargs):
+        """Check if this event should be triggered"""
+        pass
+
+    async def trigger_event(self, *args, **kwargs):
+        """Do the spooky action at a distance"""
+        pass
+
+class SimpleAPIPoltergeistEvent(PoltergeistEvent):
+    """If hunter intersects trigger area, send an API message """
+    poltergeist_url = 'https://ghost-hunt.mozilla-iot.org'
+
+    api_header = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+    }
+    session = None
+    trigger_points = [
+        # Turn on the radio plug
+        {'id': 0,
+         'geometry': Point(0, 0).buffer(500),
+         'call_type': 'put',
+         'uri': poltergeist_url + '/things/zwave-c83406e1-4/properties/on',
+         'json': {'on': True},
+         }
+    ]
+
+    def __init__(self, session=None, *args, **kwargs):
+        super(SimpleAPIPoltergeistEvent,self).__init__(*args, **kwargs)
+        if session is not None:
+            self.session = session
+
+        # Log in and get token
+    async def poltergeist_login(self):
+            url = self.poltergeist_url + '/login'
+
+            login = {
+                'email': POLTERGEIST_LOGIN,
+                'password': POLTERGEIST_PASSWORD
+            }
+            self.session = aiohttp.ClientSession()
+            response = await self.session.post(
+                url, data=json.dumps(login), headers=self.api_header
+            )
+
+            if response.status == 200:
+                r = await response.json()
+                if 'jwt' in r:
+                    self.bearer_token = r['jwt']
+                    # Add the token to default header
+                    self.api_header['Authorization'] = 'Bearer {}'.format(
+                        self.bearer_token
+                    )
+                return True
+            else:
+                logging.warning('Bad connection to poltergeist code {}'.format(
+                    response.status_code
+                )
+                )
+            return False
+
+    async def check_trigger(self, *args, **kwargs):
+        if 'hunter_position' in kwargs:
+            hunter_position = kwargs['hunter_position']
+            # Is the hunter's position intersecting with any trigger points?
+            for event in self.trigger_points:
+                if hunter_position.intersects(event['geometry']):
+                    # We're in an event position, send api call.
+                    await self.trigger(
+                        kwargs={
+                            'hunter_position':hunter_position,
+                            'event':event
+                        }
+                    )
+                    return True
+        return False
+
+
+    async def trigger(self, *args, **kwargs):
+        # hunter_position = kwargs['hunter_position']
+        event = kwargs['event']
+        await self.poltergeist_call(event['call_type'],
+                              event['uri'],
+                              data=event['json']
+                              )
+        self.triggered = True
+        return True
+
+    async def poltergeist_call(self, call_type,
+                               uri,
+                               headers=None,
+                               data=None):
+        """ Make rest api call to poltergeist"""
+        if not self.session:
+            await self.poltergeist_login()
+        if not headers:
+            headers = self.api_header
+        try:
+
+            if data is None:
+                response = await self.session.request(call_type, uri,
+                                                      headers=headers)
+            else:
+                response = await self.session.request(call_type, uri,
+                                                      headers=headers,
+                                                      data=json.dumps(data)
+                                                      )
+            r = await response.text()
+            print(r)
+            pdb.set_trace()
+            return response
+        except asyncio.CancelledError as cancelled:
+            logging.debug('api call {} cancelled'.format(cancelled))
+        return False
+
+
+
 
 class SymposiumHunter(ProximityDevice):
     """ Demo device for sharing.  Will integrate some of the REST stuff  later
@@ -69,6 +200,7 @@ class SymposiumHunter(ProximityDevice):
     bearer_token = ''
 
     poltergeist_url = 'https://ghost-hunt.mozilla-iot.org'
+    poltergeist_events = None
 
     api_header = {
         'Accept': 'application/json',
@@ -88,6 +220,12 @@ class SymposiumHunter(ProximityDevice):
          'json': {'on': True},         
          }
     ]
+
+    def __init__(self, *args, **kwargs):
+        super(SymposiumHunter,self).__init__(*args, **kwargs)
+        self.poltergeist_events = [
+            SimpleAPIPoltergeistEvent()
+        ]
 
     # Log in and get token
     async def poltergeist_login(self):

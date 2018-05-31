@@ -324,6 +324,9 @@ class HunterUwbMicrobit(HunterBLE):
     uwb_serial = None
     # last position object received from DWM board
     uwb_pos = None
+    # tolerance (in mm) to ignore so that we don't mistake
+    # fluctuation in uwb readings for hunter movement
+    uwb_tolerance = 0
     # These are shapely geometries of things the device can detect
     # dict of lists split by level/room, updated by server as hunt develops
     detectable_things = None
@@ -553,7 +556,7 @@ class HunterUwbMicrobit(HunterBLE):
                          )
                     )
                 ):
-                    
+                    # todo add tolerance later
                     await self.uwb_pos_updated(result)
 
                 self.uwb_pos = result
