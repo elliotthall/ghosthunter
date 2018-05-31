@@ -295,13 +295,20 @@ class SymposiumHunter(ProximityDevice):
         hunter_position = Point(float(new_position['position']['x']),
                                 float(new_position['position']['y']), 0)
         # Is the hunter's position intersecting with any trigger points?
-        for thing in self.poltergeist_things:
-            if hunter_position.intersects(thing['geometry']):
-                # We're in an event position, send api call.                
-                await self.poltergeist_call(thing['call_type'],
-                                            thing['uri'],
-                                            data=thing['json']
-                                            )
+        # for thing in self.poltergeist_things:
+        #     if hunter_position.intersects(thing['geometry']):
+        #         # We're in an event position, send api call.
+        #         await self.poltergeist_call(thing['call_type'],
+        #                                     thing['uri'],
+        #                                     data=thing['json']
+        #                                     )
+        event_kwargs={
+            'hunter_position':hunter_position
+        }
+        for event in self.poltergeist_events:
+            await event.check_trigger(
+                kwargs=event_kwargs
+            )
         return True
 
     # h = header
