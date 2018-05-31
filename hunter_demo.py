@@ -142,11 +142,9 @@ class SimpleAPIPoltergeistEvent(PoltergeistEvent):
             for event in self.trigger_points:
                 if hunter_position.intersects(event['geometry']):
                     # We're in an event position, send api call.
-                    await self.trigger(
-                        kwargs={
-                            'hunter_position':hunter_position,
-                            'event':event
-                        }
+                    await self.trigger(                        
+                            hunter_position=hunter_position,
+                            event=event                        
                     )
                     return True
         return False
@@ -301,13 +299,11 @@ class SymposiumHunter(ProximityDevice):
         #         await self.poltergeist_call(thing['call_type'],
         #                                     thing['uri'],
         #                                     data=thing['json']
-        #                                     )
-        event_kwargs={
-            'hunter_position':hunter_position
-        }
+        #                                     )        
+        pdb.set_trace()
         for event in self.poltergeist_events:
             await event.check_trigger(
-                kwargs=event_kwargs
+                hunter_position=hunter_position
             )
         return True
 
