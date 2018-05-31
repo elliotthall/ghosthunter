@@ -6,6 +6,7 @@ import aiohttp
 import requests
 import json
 from shapely.geometry import Point
+from pyHS100 import SmartBulb
 
 from hunter.devices import ProximityDevice
 from local import (POLTERGEIST_LOGIN, POLTERGEIST_PASSWORD)
@@ -13,52 +14,7 @@ from local import (POLTERGEIST_LOGIN, POLTERGEIST_PASSWORD)
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-"""
-/things output
 
-{'name': 'room1-plug2', 'type': 'smartPlug', 'description': '', 'href': 
-'/things/zwave-c83406e1-3', 'properties': {'on': {'type': 'boolean', 'href': 
-'/things/zwave-c83406e1-3/properties/on'}, 'instantaneousPower': {'type': 
-'number', 'unit': 'watt', 'href': 
-'/things/zwave-c83406e1-3/properties/instantaneousPower'}, 'voltage': {
-'type': 'number', 'unit': 'volt', 'href': 
-'/things/zwave-c83406e1-3/properties/voltage'}, 'current': {'type': 
-'number', 'unit': 'ampere', 'href': 
-'/things/zwave-c83406e1-3/properties/current'}}, 'actions': {}, 'events': {
-}, 'links': [{'rel': 'properties', 'href': 
-'/things/zwave-c83406e1-3/properties'}, {'rel': 'actions', 'href': 
-'/things/zwave-c83406e1-3/actions'}, {'rel': 'events', 'href': 
-'/things/zwave-c83406e1-3/events'}, {'rel': 'alternate', 'mediaType': 
-'text/html', 'href': '/things/zwave-c83406e1-3'}, {'rel': 'alternate', 
-'href': 'wss://ghost-hunt.mozilla-iot.org/things/zwave-c83406e1-3'}]}, 
-{'name': 'room1-plug1', 'type': 'smartPlug', 'description': '', 'href': 
-'/things/zwave-c83406e1-4', 'properties': {'on': {'type': 'boolean', 'href': 
-'/things/zwave-c83406e1-4/properties/on'}, 'instantaneousPower': {'type': 
-'number', 'unit': 'watt', 'href': 
-'/things/zwave-c83406e1-4/properties/instantaneousPower'}, 'voltage': {
-'type': 'number', 'unit': 'volt', 'href': 
-'/things/zwave-c83406e1-4/properties/voltage'}, 'current': {'type': 
-'number', 'unit': 'ampere', 'href': 
-'/things/zwave-c83406e1-4/properties/current'}}, 'actions': {}, 'events': {
-}, 'links': [{'rel': 'properties', 'href': 
-'/things/zwave-c83406e1-4/properties'}, {'rel': 'actions', 'href': 
-'/things/zwave-c83406e1-4/actions'}, {'rel': 'events', 'href': 
-'/things/zwave-c83406e1-4/events'}, {'rel': 'alternate', 'mediaType': 
-'text/html', 'href': '/things/zwave-c83406e1-4'}, {'rel': 'alternate', 
-'href': 'wss://ghost-hunt.mozilla-iot.org/things/zwave-c83406e1-4'}]}, 
-{'name': 'room1-lamp', 'type': 'dimmableColorLight', 'description': '', 
-'href': '/things/virtual-things-2', 'properties': {'color': {'type': 
-'string', 'href': '/things/virtual-things-2/properties/color'}, 'level': {
-'type': 'number', 'unit': 'percent', 'href': 
-'/things/virtual-things-2/properties/level'}, 'on': {'type': 'boolean', 
-'href': '/things/virtual-things-2/properties/on'}}, 'actions': {}, 'events': 
-{}, 'links': [{'rel': 'properties', 'href': 
-'/things/virtual-things-2/properties'}, {'rel': 'actions', 'href': 
-'/things/virtual-things-2/actions'}, {'rel': 'events', 'href': 
-'/things/virtual-things-2/events'}, {'rel': 'alternate', 'mediaType': 
-'text/html', 'href': '/things/virtual-things-2'}, {'rel': 'alternate', 
-'href': 'wss://ghost-hunt.mozilla-iot.org/things/virtual-things-2'}]}]
-"""
 
 # This will go into poltergeist when ready
 class PoltergeistEvent(object):
@@ -81,6 +37,7 @@ class PoltergeistEvent(object):
     async def trigger_event(self, *args, **kwargs):
         """Do the spooky action at a distance"""
         pass
+
 
 class SimpleAPIPoltergeistEvent(PoltergeistEvent):
     """If hunter intersects trigger area, send an API message """
@@ -187,7 +144,42 @@ class SimpleAPIPoltergeistEvent(PoltergeistEvent):
             logging.debug('api call {} cancelled'.format(cancelled))
         return False
 
+# r, g, b = (111, 121, 131)
+# packed = int('%02x%02x%02x' % (r, g, b), 16)
 
+class LightBulbPoltergeistEvent(SimpleAPIPoltergeistEvent):
+
+    async def check_trigger(self, *args, **kwargs):
+        if 'hunter_position' in kwargs:
+            hunter_position = kwargs['hunter_position']
+            # Is the hunter's position intersecting with any trigger points?
+            for event in self.trigger_points:
+                if hunter_position.intersects(event['geometry']):
+                    # We're in an event position, send api call.
+                    await self.trigger(                        
+                            hunter_position=hunter_position,
+                            event=event                        
+                    )
+                    return True
+        return False
+
+
+    async def trigger(self, *args, **kwargs):
+        # hunter_position = kwargs['hunter_position']
+        # light = SmartBulb('10.0.1.7')
+        # hsv = colorsys.rgb_to_hsv(0.0,0.0,0.8)
+        # conver to int!
+        # light.hsv=(hsv[0]*360,hsv[1]*100,hsv[2]*100)
+        
+        # 
+
+        event = kwargs['event']
+        await self.poltergeist_call(event['call_type'],
+                              event['uri'],
+                              data=event['json']
+                              )
+        self.triggered = True
+        return True
 
 
 class SymposiumHunter(ProximityDevice):
