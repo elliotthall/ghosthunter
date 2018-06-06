@@ -2,10 +2,8 @@ import asyncio
 import concurrent.futures
 import json
 import logging
-import pdb
 
 import aiohttp
-from pyHS100 import SmartBulb
 from shapely.geometry import Point
 
 from hunter.devices import ProximityDevice
@@ -16,8 +14,17 @@ logging.basicConfig(
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 POLTERGEIST_URL = 'https://ghost-hunt.mozilla-iot.org'
+# http://hassbian.local:8123/api/services/switch/turn_off
+HA_API_URL = 'http://hassbian.local:8123/api'
+HA_ENTITY_PLUG1_1 = \
+    "switch" \
+    ".wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch_2"
+HA_ENTITY_PLUG1_2 = \
+    "switch" \
+    ".wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch_1"
+
 PLUG_1_URI = POLTERGEIST_URL + '/things/zwave-c83406e1-4'
-BULB_IP = '10.0.1.7'
+BULB_IP = '10.0.1.5'
 
 """
 {'name': 'room1-plug1', 'type': 'smartPlug', 'description': '', 'href': 
@@ -40,14 +47,15 @@ class PoltergeistEvent(object):
     """Base class for a poltergeist event, something done by the ghost with
      the smart home technology"""
     # Can this effect happen right now?
-    active = False
+    active = True
     # has it already happened?
     triggered = False
     # Number of times it can happen, -1 for infinite
     trigger_limit = 1
 
     def __init__(self, *args, **kwargs):
-        pass
+        if 'active' in kwargs:
+            self.active = kwargs['active']
 
     async def check_trigger(self, *args, **kwargs):
         """Check if this event should be triggered"""
@@ -57,8 +65,12 @@ class PoltergeistEvent(object):
         """Do the spooky action at a distance"""
         pass
 
+    async def finish(self, *args, **kwargs):
+        """Optional 'big(ish) finish' for an event"""
+        pass
 
-class SimpleAPIPoltergeistEvent(PoltergeistEvent):
+
+class MozillaSimplePoltergeistEvent(PoltergeistEvent):
     """If hunter intersects trigger area, send an API message """
     poltergeist_url = POLTERGEIST_URL
 
@@ -78,7 +90,9 @@ class SimpleAPIPoltergeistEvent(PoltergeistEvent):
     ]
 
     def __init__(self, session=None, *args, **kwargs):
-        super(SimpleAPIPoltergeistEvent, self).__init__(*args, **kwargs)
+        super(MozillaSimplePoltergeistEvent, self).__init__(*args, **kwargs)
+        if 'trigger_points' in kwargs:
+            self.trigger_points = kwargs['trigger_points']
         if session is not None:
             self.session = session
 
@@ -165,46 +179,88 @@ class SimpleAPIPoltergeistEvent(PoltergeistEvent):
 # r, g, b = (111, 121, 131)
 # packed = int('%02x%02x%02x' % (r, g, b), 16)
 
-class LightBulbPoltergeistEvent(SimpleAPIPoltergeistEvent):
-    light = None
+class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
     effect_range = 5000
+    api_header = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+    }
+    session = None
 
     def __init__(self, *args, **kwargs):
-        super(LightBulbPoltergeistEvent, self).__init__()
+        super(PoltergeistEvent, self).__init__()
+        self.active = False
         if 'light_location' in kwargs:
             self.light_location = kwargs['light_location']
-        self.light = SmartBulb(BULB_IP)
+        if 'session' in kwargs:
+            self.session = kwargs['session']
+        else:
+            self.session = aiohttp.ClientSession()
+
+    async def poltergeist_call(self, call_type,
+                               uri,
+                               headers=None,
+                               data=None):
+        """ Make rest api call to poltergeist"""
+        if not headers:
+            headers = self.api_header
+        try:
+
+            if data is None:
+                response = await self.session.request(call_type, uri,
+                                                      headers=headers)
+            else:
+                response = await self.session.request(call_type, uri,
+                                                      headers=headers,
+                                                      data=json.dumps(data)
+                                                      )
+
+            return response
+        except asyncio.CancelledError as cancelled:
+            logging.debug('api call {} cancelled'.format(cancelled))
+        return False
 
     async def check_trigger(self, *args, **kwargs):
-        if 'hunter_position' in kwargs:
+        if self.active and 'hunter_position' in kwargs:
             hunter_position = kwargs['hunter_position']
             # get the plug 1 (radio) status and wattage
             # if on and 0 (radio has been turned off)
             if self.light_on is not True:
-                response = await self.poltergeist_call(
-                    'get',
-                    PLUG_1_URI + '/properties/on'
-                )
-                r = await response.json()
-                print(r)
-                pdb.set_trace()
-                if r['on'] == True:
-                    response = await self.poltergeist_call(
-                        'get',
-                        PLUG_1_URI + '/properties/instantaneousPower'
-                    )
-                    r = await response.json()
-                    wattage = r['instantaneousPower']
-                    if wattage == 0:
-                        # Turn on light
-                        self.trigger()
+                pass
+                # response = await self.poltergeist_call(
+                #     'get',
+                #     PLUG_1_URI + '/properties/on'
+                # )
+                # r = await response.json()
+                # print(r)
+                # pdb.set_trace()
+                # if r['on'] == True:
+                #     response = await self.poltergeist_call(
+                #         'get',
+                #         PLUG_1_URI + '/properties/instantaneousPower'
+                #     )
+                #     r = await response.json()
+                #     wattage = r['instantaneousPower']
+                #     if wattage == 0:
+                #         # Turn on light
+                #         self.trigger()
             elif self.light_on is True:
-                # Light is on, change brightness for position
+                # Light is on, toggle flicker
                 distance = hunter_position.distance(self.light_location)
-                brightness = (1 - (distance / self.effect_range)) * 100
-                self.light.brightness = brightness
+                if distance < 200:
+                    # finish event
+                    await self.finish(
+                        hunter_position=hunter_position,
+                    )
+                    return True
+                else:
+                    await self.trigger(
+                        hunter_position=hunter_position,
+                    )
+                    return True
+
         await asyncio.sleep(0.2)
         return True
 
@@ -213,7 +269,44 @@ class LightBulbPoltergeistEvent(SimpleAPIPoltergeistEvent):
         # hsv = colorsys.rgb_to_hsv(0.0,0.0,0.8)
         # conver to int!
         # light.hsv=(hsv[0]*360,hsv[1]*100,hsv[2]*100)
-        self.light.brightness = 50
+        flicker_data = {
+            "flicker": {
+                "input": {
+                    "num_flickers": 5
+                }
+            }
+        }
+        response = await self.poltergeist_call(
+            'post',
+            HA_API_URL + '/actions',
+            data=flicker_data
+        )
+        return True
+
+    async def finish(self, *args, **kwargs):
+        # hsv = colorsys.rgb_to_hsv(0.0, 0.0, 0.8)
+        data = {
+            "entity_id": "light.tplink_light"
+        }
+        response = await self.poltergeist_call(
+            'post',
+            HA_API_URL + '/services/light/turn_off',
+            data=data
+        )
+        data = {
+            "play": {
+                "input": {
+                    '/Users/ehall/projects/ghost/ghosthunt-poltergeist'
+                    '/assets/2 spooky 4 me 3.wav'
+                }
+            }
+        }
+        response = await self.poltergeist_call(
+            'post',
+            POLTERGEIST_URL + '/0/actions',
+            data=data
+        )
+        self.active = False
         return True
 
 
@@ -233,24 +326,10 @@ class SymposiumHunter(ProximityDevice):
     }
     session = None
 
-    # Event triggers for poltergeist effects
-    # simple trigger placed here for now, may evolve into their
-    # own classes for more complex events.
-    poltergeist_things = [
-        # Turn on the radio plug
-        {'id': 0,
-         'geometry': Point(0, 0).buffer(500),
-         'call_type': 'put',
-         'uri': poltergeist_url + '/things/zwave-c83406e1-4/properties/on',
-         'json': {'on': True},
-         }
-    ]
-
     def __init__(self, *args, **kwargs):
         super(SymposiumHunter, self).__init__(*args, **kwargs)
-        self.poltergeist_events = [
-            SimpleAPIPoltergeistEvent()
-        ]
+        if 'poltergeist_events' in kwargs:
+            self.poltergeist_events = kwargs['poltergeist_events']
 
     # Log in and get token
     async def poltergeist_login(self):
@@ -318,38 +397,51 @@ class SymposiumHunter(ProximityDevice):
         necessary"""
         hunter_position = Point(float(new_position['position']['x']),
                                 float(new_position['position']['y']), 0)
-        # Is the hunter's position intersecting with any trigger points?
-        # for thing in self.poltergeist_things:
-        #     if hunter_position.intersects(thing['geometry']):
-        #         # We're in an event position, send api call.
-        #         await self.poltergeist_call(thing['call_type'],
-        #                                     thing['uri'],
-        #                                     data=thing['json']
-        #                                     )        
+
 
         for event in self.poltergeist_events:
-            await event.check_trigger(
-                hunter_position=hunter_position
-            )
+            if event.active:
+                await event.check_trigger(
+                    hunter_position=hunter_position
+                )
         return True
-
-
 
 
 def main():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        hunter = SymposiumHunter(loop, executor,
-                                 hunt_url='ws://demos.kaazing.com/echo',
-                                 MAC='78:4f:43:6c:cc:0f'
-                                 )
-        hunter.detectable_things = {
+        detectable_things = {
             0: [
                 {'id': 0,
                  'geometry': Point(3650, 3010),
                  'level': 0}
             ]
         }
+        # Set up the events and room detectables
+        plug_trigger_events = {'id': 0,
+                               'geometry': detectable_things[0][0][
+                                   'geometry'].buffer(500),
+                               'call_type': 'put',
+                               'uri': HA_API_URL + '/services/switch/turn_on',
+                               'json': {"entity_id": HA_ENTITY_PLUG1_1},
+                               }
+        light_location = Point(0, 0)
+        poltergeist_events = [
+            MozillaSimplePoltergeistEvent(
+                session=aiohttp.ClientSession(),
+                trigger_points=plug_trigger_events
+            ),
+            LightBulbPoltergeistEvent(
+                active=False,
+                light_location=light_location
+            )
+        ]
+        hunter = SymposiumHunter(loop, executor,
+                                 hunt_url='ws://demos.kaazing.com/echo',
+                                 MAC='78:4f:43:6c:cc:0f',
+                                 poltergeist_events=poltergeist_events
+                                 )
+        hunter.detectable_things = detectable_things
         """
         {'id': 1,
                  'geometry': Point(40, 467).buffer(50),
@@ -358,6 +450,7 @@ def main():
                  'geometry': Point(569, 778),
                  'level': 0},
                  """
+
         websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
         hunter.websocket = websocket
         try:
