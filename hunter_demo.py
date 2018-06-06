@@ -421,7 +421,7 @@ def main():
         plug_trigger_events = {'id': 0,
                                'geometry': detectable_things[0][0][
                                    'geometry'].buffer(500),
-                               'call_type': 'put',
+                               'call_type': 'post',
                                'uri': HA_API_URL + '/services/switch/turn_on',
                                'json': {"entity_id": HA_ENTITY_PLUG1_1},
                                }
