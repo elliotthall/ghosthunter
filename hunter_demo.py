@@ -189,7 +189,7 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
 class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
-    effect_range = 5000
+    effect_range = 1000
     api_header = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -218,7 +218,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             headers = self.api_header
         try:
             logging.info('api call {}'.format(
-                uri))            
+                uri))
             if data is None:
                 response = await self.session.request(call_type, uri,
                                                       headers=headers)
@@ -239,27 +239,28 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             # get the plug 1 (radio) status and wattage
             # if on and 0 (radio has been turned off)
             if self.light_on is not True:
-                pass
-                # response = await self.poltergeist_call(
-                #     'get',
-                #     PLUG_1_URI + '/properties/on'
-                # )
-                # r = await response.json()
-                # print(r)
-                # pdb.set_trace()
-                # if r['on'] == True:
-                #     response = await self.poltergeist_call(
-                #         'get',
-                #         PLUG_1_URI + '/properties/instantaneousPower'
-                #     )
-                #     r = await response.json()
-                #     wattage = r['instantaneousPower']
-                #     if wattage == 0:
-                #         # Turn on light
-                #         self.trigger()
+                # sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power_2
+
+                response = await self.poltergeist_call(
+                    'post',
+                    HA_API_URL + '/ api/states/sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power_2',
+                )
+                r = await response.json()
+                if 'state' in r:
+                    power = float(r['state'])
+                    if power == 0:
+                        # switch 1 is powered off
+                        data = {
+                            "entity_id": "light.tplink_light"
+                        }
+                        response = await self.poltergeist_call(
+                            'post',
+                            HA_API_URL + '/services/light/turn_on',
+                            data=data
+                        )
+                        self.light_on = True
             elif self.light_on is True:
                 # Light is on, toggle flicker
-
                 distance = hunter_position.distance(self.light_location)
                 if distance < 200:
                     # finish event
@@ -270,6 +271,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                 else:
                     await self.trigger(
                         hunter_position=hunter_position,
+                        distance=distance
                     )
         await asyncio.sleep(0.2)
         return True
@@ -279,17 +281,28 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         # hsv = colorsys.rgb_to_hsv(0.0,0.0,0.8)
         # conver to int!
         # light.hsv=(hsv[0]*360,hsv[1]*100,hsv[2]*100)
-        flicker_data = {
-            "flicker": {
-                "input": {
-                    "num_flickers": 2
-                }
-            }
+        distance = kwargs['distance']
+        # flicker_data = {
+        #     "flicker": {
+        #         "input": {
+        #             "num_flickers": 2
+        #         }
+        #     }
+        # }
+        # response = await self.poltergeist_call(
+        #     'post',
+        #     POLTERGEIST_URL + '/1/actions',
+        #     data=flicker_data
+        # )
+        brightness = (distance/self.effect_range) * 100
+        pdb.set_trace()
+        data = {
+            "brightness":brightness
         }
         response = await self.poltergeist_call(
             'post',
-            POLTERGEIST_URL + '/1/actions',
-            data=flicker_data
+            POLTERGEIST_URL + '/1/properties/brightness',
+            data=data
         )
         await asyncio.sleep(0.2)
         return True
