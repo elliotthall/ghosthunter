@@ -11,6 +11,7 @@ import logging
 import pdb
 import time
 from concurrent.futures import CancelledError
+from shapely.geometry import Point
 
 import websockets
 from bluepy.btle import Scanner, BTLEException
@@ -326,7 +327,7 @@ class HunterUwbMicrobit(HunterBLE):
     uwb_pos = None
     # tolerance (in mm) to ignore so that we don't mistake
     # fluctuation in uwb readings for hunter movement
-    uwb_tolerance = 0
+    uwb_tolerance = 100
     # These are shapely geometries of things the device can detect
     # dict of lists split by level/room, updated by server as hunt develops
     detectable_things = None
@@ -546,17 +547,21 @@ class HunterUwbMicrobit(HunterBLE):
                     functools.partial(uwb.dwm_serial_get_loc, self.uwb_serial)
                 )
                 result = await asyncio.wait_for(future, 30,
-                                                loop=self.event_loop)
-                if (result and self.uwb_pos is None) or (
-                    self.uwb_pos and (
-                        (float(self.uwb_pos['position']['x']) != float(
-                            result['position']['x']) or
-                            float(self.uwb_pos['position']['y']) != float(
-                                result['position']['y'])
-                         )
-                    )
-                ):
-                    # todo add tolerance later
+                                                loop=self.event_loop)               
+                
+                if result is not None and self.uwb_pos is not None:
+                    
+                    old_pos = Point(
+                                float(self.uwb_pos['position']['x']),
+                                float(self.uwb_pos['position']['y'])
+                               )
+                    new_pos = Point(
+                                float(result['position']['x']),
+                                float(result['position']['y'])
+                               )
+                    distance = old_pos.distance(new_pos)
+                    logging.info('Distance moved {}'.format(distance))
+                if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):                    
                     await self.uwb_pos_updated(result)
 
                 self.uwb_pos = result

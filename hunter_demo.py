@@ -282,7 +282,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         flicker_data = {
             "flicker": {
                 "input": {
-                    "num_flickers": 5
+                    "num_flickers": 2
                 }
             }
         }
@@ -291,6 +291,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             POLTERGEIST_URL + '/1/actions',
             data=flicker_data
         )
+        await asyncio.sleep(0.2)
         return True
 
     async def finish(self, *args, **kwargs):
@@ -306,8 +307,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         data = {
             "play": {
                 "input": {
-                    '/Users/ehall/projects/ghost/ghosthunt-poltergeist'
-                    '/assets/2 spooky 4 me 3.wav'
+                    "/Users/ehall/projects/ghost/ghosthunt-poltergeist/assets/2 spooky 4 me 3.wav"
                 }
             }
         }
