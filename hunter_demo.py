@@ -413,7 +413,8 @@ def main():
         detectable_things = {
             0: [
                 {'id': 0,
-                 'geometry': Point(3650, 3010),
+                 'name': 'Stay Puft Marshmallow Man',
+                 'geometry': Point(1320, 3500),
                  'level': 0}
             ]
         }
@@ -425,7 +426,7 @@ def main():
                                'uri': HA_API_URL + '/services/switch/turn_on',
                                'json': {"entity_id": HA_ENTITY_PLUG1_1},
                                }
-        light_location = Point(0, 0)
+        light_location = Point(4020, 4220)
         poltergeist_events = [
             MozillaSimplePoltergeistEvent(
                 session=aiohttp.ClientSession(),
