@@ -79,6 +79,7 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
         'Content-Type': 'application/json',
     }
     session = None
+    login = False
     trigger_points = [
         # Turn on the radio plug
         {'id': 0,
@@ -93,8 +94,7 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
         super(MozillaSimplePoltergeistEvent, self).__init__(*args, **kwargs)
         if 'trigger_points' in kwargs:
             self.trigger_points = kwargs['trigger_points']
-        if session is not None:
-            self.session = session
+        
 
         # Log in and get token
 
@@ -155,12 +155,16 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
                                headers=None,
                                data=None):
         """ Make rest api call to poltergeist"""
-        if not self.session:
-            await self.poltergeist_login()
+        if self.session is None:
+            if self.login:
+                self.session = aiohttp.ClientSession()
+            else:
+                self.session = aiohttp.ClientSession()
         if not headers:
             headers = self.api_header
         try:
-
+            logging.info('api call {}'.format(
+                uri))
             if data is None:
                 response = await self.session.request(call_type, uri,
                                                       headers=headers)
@@ -188,26 +192,29 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         'Content-Type': 'application/json',
     }
     session = None
+    login = False
 
     def __init__(self, *args, **kwargs):
         super(PoltergeistEvent, self).__init__()
         self.active = False
         if 'light_location' in kwargs:
-            self.light_location = kwargs['light_location']
-        if 'session' in kwargs:
-            self.session = kwargs['session']
-        else:
-            self.session = aiohttp.ClientSession()
+            self.light_location = kwargs['light_location']        
 
     async def poltergeist_call(self, call_type,
                                uri,
                                headers=None,
                                data=None):
         """ Make rest api call to poltergeist"""
+        if self.session is None:
+            if self.login:
+                self.session = aiohttp.ClientSession()
+            else:
+                self.session = aiohttp.ClientSession()
         if not headers:
             headers = self.api_header
         try:
-
+            logging.info('api call {}'.format(
+                uri))
             if data is None:
                 response = await self.session.request(call_type, uri,
                                                       headers=headers)
@@ -316,6 +323,7 @@ class SymposiumHunter(ProximityDevice):
     """
     # hed = {'Authorization': 'Bearer ' + auth_token}
     bearer_token = ''
+    login = False
 
     poltergeist_url = 'https://ghost-hunt.mozilla-iot.org'
     poltergeist_events = None
@@ -339,7 +347,8 @@ class SymposiumHunter(ProximityDevice):
             'email': POLTERGEIST_LOGIN,
             'password': POLTERGEIST_PASSWORD
         }
-        self.session = aiohttp.ClientSession()
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
         response = await self.session.post(
             url, data=json.dumps(login), headers=self.api_header
         )
@@ -419,17 +428,16 @@ def main():
             ]
         }
         # Set up the events and room detectables
-        plug_trigger_events = {'id': 0,
+        plug_trigger_events = [{'id': 0,
                                'geometry': detectable_things[0][0][
                                    'geometry'].buffer(500),
                                'call_type': 'post',
                                'uri': HA_API_URL + '/services/switch/turn_on',
                                'json': {"entity_id": HA_ENTITY_PLUG1_1},
-                               }
+                               }]
         light_location = Point(4020, 4220)
         poltergeist_events = [
-            MozillaSimplePoltergeistEvent(
-                session=aiohttp.ClientSession(),
+            MozillaSimplePoltergeistEvent(                
                 trigger_points=plug_trigger_events
             ),
             LightBulbPoltergeistEvent(
