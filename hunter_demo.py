@@ -20,8 +20,7 @@ HA_ENTITY_PLUG1_1 = \
     "switch" \
     ".wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch_2"
 HA_ENTITY_PLUG1_2 = \
-    "switch" \
-    ".wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch_1"
+    "switch.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch"
 
 PLUG_1_URI = POLTERGEIST_URL + '/things/zwave-c83406e1-4'
 BULB_IP = '10.0.1.5'
@@ -53,10 +52,14 @@ class PoltergeistEvent(object):
     # Number of times it can happen, -1 for infinite
     num_triggered = 0
     trigger_limit = 1
+    # Chain events?
+    next_event = None
 
     def __init__(self, *args, **kwargs):
         if 'active' in kwargs:
             self.active = kwargs['active']
+        if 'next_event' in kwargs:
+            self.next_event = kwargs['next_event']
 
     async def check_trigger(self, *args, **kwargs):
         """Check if this event should be triggered"""
@@ -95,7 +98,6 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
         super(MozillaSimplePoltergeistEvent, self).__init__(*args, **kwargs)
         if 'trigger_points' in kwargs:
             self.trigger_points = kwargs['trigger_points']
-        
 
         # Log in and get token
 
@@ -151,6 +153,8 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
                                     data=event['json']
                                     )
         self.triggered = True
+        # HACK will improve in real code
+        self.next_event.active = True
         return True
 
     async def poltergeist_call(self, call_type,
@@ -189,7 +193,8 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
 class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
-    effect_range = 1000
+    effect_range = 3000
+    finish_range = 200
     api_header = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -198,7 +203,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
     login = False
 
     def __init__(self, *args, **kwargs):
-        super(PoltergeistEvent, self).__init__()        
+        super(LightBulbPoltergeistEvent, self).__init__(*args, **kwargs)
         if 'light_location' in kwargs:
             self.light_location = kwargs['light_location']
         if 'light_on' in kwargs:
@@ -217,8 +222,9 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         if not headers:
             headers = self.api_header
         try:
-            logging.info('api call {}'.format(
-                uri))
+            logging.info('api call {} with data {}'.format(
+                uri, data
+            ))
             if data is None:
                 response = await self.session.request(call_type, uri,
                                                       headers=headers)
@@ -233,47 +239,60 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             logging.debug('api call {} cancelled'.format(cancelled))
         return False
 
-    async def check_trigger(self, *args, **kwargs):        
+    async def check_trigger(self, *args, **kwargs):
         if self.active and 'hunter_position' in kwargs:
             hunter_position = kwargs['hunter_position']
             # get the plug 1 (radio) status and wattage
             # if on and 0 (radio has been turned off)
+
             if self.light_on is not True:
                 # sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power_2
-
                 response = await self.poltergeist_call(
-                    'post',
-                    HA_API_URL + '/ api/states/sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power_2',
+                    'get',
+                    HA_API_URL +
+                    '/states/sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power',
                 )
                 r = await response.json()
+
                 if 'state' in r:
                     power = float(r['state'])
+
                     if power == 0:
                         # switch 1 is powered off
+                        # data = {
+                        #     "entity_id": "light.tplink_light"
+                        # }
+                        # response = await self.poltergeist_call(
+                        #     'post',
+                        #     HA_API_URL + '/services/light/turn_on',
+                        #     data=data
+                        # )
                         data = {
-                            "entity_id": "light.tplink_light"
+                            "on": True
                         }
                         response = await self.poltergeist_call(
-                            'post',
-                            HA_API_URL + '/services/light/turn_on',
+                            'put',
+                            POLTERGEIST_URL + '/1/properties/on',
                             data=data
                         )
+                        await asyncio.sleep(0.2)
                         self.light_on = True
             elif self.light_on is True:
                 # Light is on, toggle flicker
                 distance = hunter_position.distance(self.light_location)
-                if distance < 200:
+                if distance < self.finish_range:
                     # finish event
                     await self.finish(
                         hunter_position=hunter_position,
                     )
-                    
-                else:
+
+                elif distance < self.effect_range:
                     await self.trigger(
                         hunter_position=hunter_position,
                         distance=distance
                     )
-        await asyncio.sleep(0.2)
+            else:
+                await asyncio.sleep(0.1)
         return True
 
     async def trigger(self, *args, **kwargs):
@@ -282,45 +301,53 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         # conver to int!
         # light.hsv=(hsv[0]*360,hsv[1]*100,hsv[2]*100)
         distance = kwargs['distance']
-        # flicker_data = {
-        #     "flicker": {
-        #         "input": {
-        #             "num_flickers": 2
-        #         }
-        #     }
-        # }
-        # response = await self.poltergeist_call(
-        #     'post',
-        #     POLTERGEIST_URL + '/1/actions',
-        #     data=flicker_data
-        # )
-        brightness = (distance/self.effect_range) * 100
-        pdb.set_trace()
-        data = {
-            "brightness":brightness
+        flicker_data = {
+            "flicker": {
+                "input": {
+                    "num_flickers": 5
+                }
+            }
         }
         response = await self.poltergeist_call(
             'post',
-            POLTERGEIST_URL + '/1/properties/brightness',
-            data=data
+            POLTERGEIST_URL + '/1/actions',
+            data=flicker_data
         )
+        # brightness = int(100 - ((distance/self.effect_range) * 100))
+
+        # data = {
+        #     "brightness":brightness
+        # }
+        # response = await self.poltergeist_call(
+        #     'put',
+        #     POLTERGEIST_URL + '/1/properties/brightness',
+        #     data=data
+        # )
         await asyncio.sleep(0.2)
         return True
 
     async def finish(self, *args, **kwargs):
         # hsv = colorsys.rgb_to_hsv(0.0, 0.0, 0.8)
-        data = {
-            "entity_id": "light.tplink_light"
-        }
+        # data = {
+        #     "on":False
+        # }
+        # response = await self.poltergeist_call(
+        #     'put',
+        #     POLTERGEIST_URL + '/1/properties/on',
+        #     data=data
+        # )
+        data = {"entity_id": HA_ENTITY_PLUG1_1}
         response = await self.poltergeist_call(
             'post',
-            HA_API_URL + '/services/light/turn_off',
+            HA_API_URL + '/services/switch/turn_off',
             data=data
         )
         data = {
             "play": {
                 "input": {
-                    "/Users/ehall/projects/ghost/ghosthunt-poltergeist/assets/2 spooky 4 me 3.wav"
+                    "file":
+                        "/Users/ehall/projects/ghost/ghosthunt-poltergeist"
+                        "/assets/2 spooky 4 me 3.wav"
                 }
             }
         }
@@ -423,8 +450,7 @@ class SymposiumHunter(ProximityDevice):
         hunter_position = Point(float(new_position['position']['x']),
                                 float(new_position['position']['y']), 0)
 
-
-        for event in self.poltergeist_events:            
+        for event in self.poltergeist_events:
             if event.active:
                 await event.check_trigger(
                     hunter_position=hunter_position
@@ -445,23 +471,28 @@ def main():
         }
         # Set up the events and room detectables
         plug_trigger_events = [{'id': 0,
-                               'geometry': detectable_things[0][0][
-                                   'geometry'].buffer(500),
-                               'call_type': 'post',
-                               'uri': HA_API_URL + '/services/switch/turn_on',
-                               'json': {"entity_id": HA_ENTITY_PLUG1_1},
-                               }]
+                                'geometry': detectable_things[0][0][
+                                    'geometry'].buffer(500),
+                                'call_type': 'post',
+                                'uri': HA_API_URL + '/services/switch/turn_on',
+                                'json': {"entity_id": HA_ENTITY_PLUG1_2},
+                                }]
         light_location = Point(4020, 4220)
+
+        event_2 = LightBulbPoltergeistEvent(
+            light_location=light_location,
+            active=False,
+            light_on=False
+        )
+
+        event_1 = MozillaSimplePoltergeistEvent(
+            active=True,
+            trigger_points=plug_trigger_events,
+            next_event=event_2
+        )
         poltergeist_events = [
-            MozillaSimplePoltergeistEvent(                
-                active=False,
-                trigger_points=plug_trigger_events
-            ),
-            LightBulbPoltergeistEvent(                
-                light_location=light_location,
-                active=True,
-                light_on=True
-            )
+            event_1,
+            event_2
         ]
         hunter = SymposiumHunter(loop, executor,
                                  hunt_url='ws://demos.kaazing.com/echo',
