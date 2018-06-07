@@ -2,7 +2,7 @@ import asyncio
 import concurrent.futures
 import json
 import logging
-
+import pdb
 import aiohttp
 from shapely.geometry import Point
 
@@ -13,7 +13,7 @@ logging.basicConfig(
     level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-POLTERGEIST_URL = 'https://ghost-hunt.mozilla-iot.org'
+POLTERGEIST_URL = 'http://10.0.1.2:8888'
 # http://hassbian.local:8123/api/services/switch/turn_off
 HA_API_URL = 'http://hassbian.local:8123/api'
 HA_ENTITY_PLUG1_1 = \
@@ -51,6 +51,7 @@ class PoltergeistEvent(object):
     # has it already happened?
     triggered = False
     # Number of times it can happen, -1 for infinite
+    num_triggered = 0
     trigger_limit = 1
 
     def __init__(self, *args, **kwargs):
@@ -137,6 +138,8 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
                         hunter_position=hunter_position,
                         event=event
                     )
+                    self.num_triggered += 1
+                    self.active = False
                     return True
         return False
 
@@ -195,10 +198,11 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
     login = False
 
     def __init__(self, *args, **kwargs):
-        super(PoltergeistEvent, self).__init__()
-        self.active = False
+        super(PoltergeistEvent, self).__init__()        
         if 'light_location' in kwargs:
-            self.light_location = kwargs['light_location']        
+            self.light_location = kwargs['light_location']
+        if 'light_on' in kwargs:
+            self.light_on = kwargs['light_on']
 
     async def poltergeist_call(self, call_type,
                                uri,
@@ -214,7 +218,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             headers = self.api_header
         try:
             logging.info('api call {}'.format(
-                uri))
+                uri))            
             if data is None:
                 response = await self.session.request(call_type, uri,
                                                       headers=headers)
@@ -229,7 +233,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
             logging.debug('api call {} cancelled'.format(cancelled))
         return False
 
-    async def check_trigger(self, *args, **kwargs):
+    async def check_trigger(self, *args, **kwargs):        
         if self.active and 'hunter_position' in kwargs:
             hunter_position = kwargs['hunter_position']
             # get the plug 1 (radio) status and wattage
@@ -255,19 +259,18 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                 #         self.trigger()
             elif self.light_on is True:
                 # Light is on, toggle flicker
+
                 distance = hunter_position.distance(self.light_location)
                 if distance < 200:
                     # finish event
                     await self.finish(
                         hunter_position=hunter_position,
                     )
-                    return True
+                    
                 else:
                     await self.trigger(
                         hunter_position=hunter_position,
                     )
-                    return True
-
         await asyncio.sleep(0.2)
         return True
 
@@ -285,7 +288,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         }
         response = await self.poltergeist_call(
             'post',
-            HA_API_URL + '/actions',
+            POLTERGEIST_URL + '/1/actions',
             data=flicker_data
         )
         return True
@@ -408,7 +411,7 @@ class SymposiumHunter(ProximityDevice):
                                 float(new_position['position']['y']), 0)
 
 
-        for event in self.poltergeist_events:
+        for event in self.poltergeist_events:            
             if event.active:
                 await event.check_trigger(
                     hunter_position=hunter_position
@@ -438,11 +441,13 @@ def main():
         light_location = Point(4020, 4220)
         poltergeist_events = [
             MozillaSimplePoltergeistEvent(                
+                active=False,
                 trigger_points=plug_trigger_events
             ),
-            LightBulbPoltergeistEvent(
-                active=False,
-                light_location=light_location
+            LightBulbPoltergeistEvent(                
+                light_location=light_location,
+                active=True,
+                light_on=True
             )
         ]
         hunter = SymposiumHunter(loop, executor,
