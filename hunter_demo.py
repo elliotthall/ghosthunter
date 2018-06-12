@@ -54,6 +54,7 @@ class PoltergeistEvent(object):
     trigger_limit = 1
     # Chain events?
     next_event = None
+    next_event_delay = 5
 
     def __init__(self, *args, **kwargs):
         if 'active' in kwargs:
@@ -154,6 +155,7 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
                                     )
         self.triggered = True
         # HACK will improve in real code
+        asyncio.sleep(self.next_event_delay)
         self.next_event.active = True
         return True
 
@@ -194,7 +196,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
     effect_range = 3000
-    finish_range = 200
+    finish_range = 500
     api_header = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -250,14 +252,14 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                 response = await self.poltergeist_call(
                     'get',
                     HA_API_URL +
-                    '/states/sensor.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_power',
+                    '/states/switch.wenzhou_tkb_control_system_tz69_smart_energy_plug_in_switch_switch',
                 )
                 r = await response.json()
 
                 if 'state' in r:
-                    power = float(r['state'])
+                    state = r['state']
 
-                    if power == 0:
+                    if 'off' in state:
                         # switch 1 is powered off
                         # data = {
                         #     "entity_id": "light.tplink_light"
@@ -275,7 +277,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                             POLTERGEIST_URL + '/1/properties/on',
                             data=data
                         )
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(0.5)
                         self.light_on = True
             elif self.light_on is True:
                 # Light is on, toggle flicker
@@ -291,6 +293,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                         hunter_position=hunter_position,
                         distance=distance
                     )
+                    await asyncio.sleep(0.5)
             else:
                 await asyncio.sleep(0.1)
         return True
@@ -304,7 +307,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         flicker_data = {
             "flicker": {
                 "input": {
-                    "num_flickers": 5
+                    "num_flickers": 2
                 }
             }
         }
@@ -323,7 +326,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         #     POLTERGEIST_URL + '/1/properties/brightness',
         #     data=data
         # )
-        await asyncio.sleep(0.2)
+
         return True
 
     async def finish(self, *args, **kwargs):
@@ -465,7 +468,7 @@ def main():
             0: [
                 {'id': 0,
                  'name': 'Stay Puft Marshmallow Man',
-                 'geometry': Point(1320, 3500),
+                 'geometry': Point(1074, 3521),
                  'level': 0}
             ]
         }
@@ -477,7 +480,7 @@ def main():
                                 'uri': HA_API_URL + '/services/switch/turn_on',
                                 'json': {"entity_id": HA_ENTITY_PLUG1_2},
                                 }]
-        light_location = Point(4020, 4220)
+        light_location = Point(3366, 3860)
 
         event_2 = LightBulbPoltergeistEvent(
             light_location=light_location,

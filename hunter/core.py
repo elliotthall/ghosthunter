@@ -560,8 +560,11 @@ class HunterUwbMicrobit(HunterBLE):
                                 float(result['position']['y'])
                                )
                     distance = old_pos.distance(new_pos)
-                    logging.info('Distance moved {}'.format(distance))
-                if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):                    
+                    #logging.info('New position {}, {}'.format(
+                    #        result['position']['x'],result['position']['y']
+                    #    )
+                    #)
+                if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):
                     await self.uwb_pos_updated(result)
 
                 self.uwb_pos = result
@@ -587,7 +590,7 @@ class HunterUwbMicrobit(HunterBLE):
         :param serial_connection: uart connection for function
         :param message: message to send, none if receive
         """
-        pdb.set_trace()
+
         try:
             if message:
                 future = self.event_loop.run_in_executor(
