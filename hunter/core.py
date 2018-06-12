@@ -560,12 +560,16 @@ class HunterUwbMicrobit(HunterBLE):
                                 float(result['position']['y'])
                                )
                     distance = old_pos.distance(new_pos)
-                    #logging.info('New position {}, {}'.format(
-                    #        result['position']['x'],result['position']['y']
-                    #    )
-                    #)
+                    logging.info('New position {}, {}'.format(
+                           result['position']['x'],result['position']['y']
+                       )
+                    )               
+                    logging.info('distance {}'.format(distance))
                 if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):
                     await self.uwb_pos_updated(result)
+                    
+
+
 
                 self.uwb_pos = result
                 await asyncio.sleep(0.2)
