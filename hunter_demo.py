@@ -54,7 +54,7 @@ class PoltergeistEvent(object):
     trigger_limit = 1
     # Chain events?
     next_event = None
-    next_event_delay = 5
+    next_event_delay = 3
 
     def __init__(self, *args, **kwargs):
         if 'active' in kwargs:
@@ -154,8 +154,9 @@ class MozillaSimplePoltergeistEvent(PoltergeistEvent):
                                     data=event['json']
                                     )
         self.triggered = True
+        
         # HACK will improve in real code
-        asyncio.sleep(self.next_event_delay)
+        await asyncio.sleep(self.next_event_delay)
         self.next_event.active = True
         return True
 
@@ -196,7 +197,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
     effect_range = 3000
-    finish_range = 500
+    finish_range = 200
     api_header = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -258,7 +259,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
 
                 if 'state' in r:
                     state = r['state']
-
+                    
                     if 'off' in state:
                         # switch 1 is powered off
                         # data = {
@@ -293,9 +294,8 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
                         hunter_position=hunter_position,
                         distance=distance
                     )
-                    await asyncio.sleep(0.5)
-            else:
-                await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.3)
+            await asyncio.sleep(0.1)
         return True
 
     async def trigger(self, *args, **kwargs):
@@ -307,7 +307,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         flicker_data = {
             "flicker": {
                 "input": {
-                    "num_flickers": 2
+                    "num_flickers": 3
                 }
             }
         }
@@ -454,7 +454,7 @@ class SymposiumHunter(ProximityDevice):
                                 float(new_position['position']['y']), 0)
 
         for event in self.poltergeist_events:
-            if event.active:
+            if event.active is True:
                 await event.check_trigger(
                     hunter_position=hunter_position
                 )
@@ -468,7 +468,7 @@ def main():
             0: [
                 {'id': 0,
                  'name': 'Stay Puft Marshmallow Man',
-                 'geometry': Point(1074, 3521),
+                 'geometry': Point(2700, 1050),
                  'level': 0}
             ]
         }
@@ -480,7 +480,7 @@ def main():
                                 'uri': HA_API_URL + '/services/switch/turn_on',
                                 'json': {"entity_id": HA_ENTITY_PLUG1_2},
                                 }]
-        light_location = Point(3366, 3860)
+        light_location = Point(6180, 1680)
 
         event_2 = LightBulbPoltergeistEvent(
             light_location=light_location,
@@ -497,12 +497,14 @@ def main():
             event_1,
             event_2
         ]
+
         hunter = SymposiumHunter(loop, executor,
                                  hunt_url='ws://demos.kaazing.com/echo',
                                  MAC='78:4f:43:6c:cc:0f',
                                  poltergeist_events=poltergeist_events
                                  )
         hunter.detectable_things = detectable_things
+        hunter.uwb_tolerance = 30
         """
         {'id': 1,
                  'geometry': Point(40, 467).buffer(50),
