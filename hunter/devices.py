@@ -66,7 +66,7 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             # minimum reading of one
             leds = 1
         # send to microbit for display
-        # todo make this COOLER
+        # todo Send result not image
         canvas = [['0'] * 5 for x in range(0, 5)]
         for x in range(0, leds):
             row = int(math.floor(x / 5))
