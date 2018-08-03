@@ -1,29 +1,75 @@
 """ Specific ghost detectors derived from the core library.
 These devices are what the student will select and use."""
-import asyncio
 import logging
 import math
-from concurrent.futures import CancelledError
+import random
 from operator import itemgetter
+
 from shapely.geometry import Point
-import pdb
 
 import hunter.core as hunter_core
 
+morse_codes = {'A': '.-', 'B': '-...', 'C': '-.-.',
+               'D': '-..', 'E': '.', 'F': '..-.',
+               'G': '--.', 'H': '....', 'I': '..',
+               'J': '.---', 'K': '-.-', 'L': '.-..',
+               'M': '--', 'N': '-.', 'O': '---',
+               'P': '.--.', 'Q': '--.-', 'R': '.-.',
+               'S': '...', 'T': '-', 'U': '..-',
+               'V': '...-', 'W': '.--', 'X': '-..-',
+               'Y': '-.--', 'Z': '--..',
 
-class ProximityDevice(hunter_core.HunterUwbMicrobit):
-    """Ping-type radar detection.
-    Short range(?), 360 degree FOV
-    Detect anomalies and use micro:bit LEDs to display
-    their rough proximity in a hotter/colder fashion"""
-    # Device detection range (in mm)
-    device_range = 5000
+               '0': '-----', '1': '.----', '2': '..---',
+               '3': '...--', '4': '....-', '5': '.....',
+               '6': '-....', '7': '--...', '8': '---..',
+               '9': '----.'
+               }
+
+code_lookup = {v: k for k, v in
+               morse_codes.items()
+               }
+
+
+class MainDevice(hunter_core.HunterUwbMicrobit):
+    """ This class contains all the various hunter detector
+     functions, merged together for ease of deployment """
+
+    """ variable settings for all devices """
+
+    # Ghost Radar
+    radar_settings = {
+        # Detection range (in mm)
+        "device_range": 5000
+    }
+
+    # Ectoscope
+    ectoscope_settings = {
+        # Detection range (in mm)
+        "device_range": 500
+    }
+
+    # Spirit Signs
+    spiritsign_settings = {
+        # sigils that can be decoded
+        'signs':{
+            # empty sign for convenience of making real ones
+            "00000:00000:00000:00000:00000":"Test",
+            "90009:00000:00000:00000:90009": "BOO!"
+        }
+    }
+
+    # paranormalradio_settings = {
+    #
+    # }
+
+    # Use diagnostics rather than attempt to get live data
+    DEBUG_MODE = False
 
     trigger_animation = ("00000:00000:00300:00000:00000," +
                          "00000:07770:07070:07770:00000," +
                          "99999:90009:90009:90009:99999")
 
-    def detect_things(self, x, y, level=0):
+    def detect_things(self, x, y, device_range, level=0):
         """
         Use shapely to find 'detectable' objects
         :param level: to separate storeys of a building, or rooms
@@ -31,10 +77,10 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         """
         detected_things = list()
         if self.uwb_pos and self.detectable_things:
-            
+
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
-                float(x), float(y)).buffer(self.device_range)
+                float(x), float(y)).buffer(device_range)
             # Get all detectable features for this level
             for thing in self.detectable_things[level]:
                 if detection_zone.intersects(thing['geometry']):
@@ -60,7 +106,7 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
         leds = int(
             math.ceil(
                 (1 - (detected_thing['distance'] / self.device_range)) * 25
-                )
+            )
         )
         if leds == 0:
             # minimum reading of one
@@ -77,29 +123,97 @@ class ProximityDevice(hunter_core.HunterUwbMicrobit):
             image += "".join(canvas[y])
             if y != 4:
                 image += ":"
-        logging.info("Thing found, nearest: id {} at {}cm away, {} leds".format(
+        logging.info(
+            "Thing found, nearest: id {} at {}cm away, {} leds".format(
                 detected_thing['id'],
                 detected_thing['distance'],
                 leds
             )
         )
-        self.microbit_write(self.MICROBIT_CODES['image'], image)
-        return True
+        return [self.MICROBIT_CODES['image'], image]
 
-    def trigger(self):
-        """ Time device 'cooldown' after detection attempt """
-        logging.info("triggering...")
-        # todo Trigger animation?
-        # todo Fresh get pos here?
+
+    def hunt(self):
+        """ Parse the micro:bit message and use the relevant function
+        to return output
+
+        'radar': b'\x30',
+        'ectoscope': b'\x31',
+        'telegraph': b'\x32',
+        'spiritsign': b'\x33',
+        'radio': b'\x34',
+        """
+        command = self.command_queue[self.COMMAND_HUNT]
+        code = command[0:1]
+        value = command[2:-1]
+        result = None
+        if code == self.MICROBIT_CODES['radar']:
+            result = self.ghost_scan()
+        elif code == self.MICROBIT_CODES['ectoscope']:
+            result = self.ecto_scan()
+        elif code == self.MICROBIT_CODES['telegraph']:
+            result = self.telegraph_transmit(value)
+        elif code == self.MICROBIT_CODES['spiritsign']:
+            result = self.decode_spiritsign(value)
+        elif code == self.MICROBIT_CODES['radio']:
+            result = self.tune_radio(value)
+        if result is not None:
+            self.microbit_write()
+
+    """ **************  Hunting functions *********************   """
+
+    def scan(self, settings):
+        """ Scan function used for both radar and ectoscope """
+        logging.debug("Ghost radar scanning...")
         pos = self.uwb_pos
         if pos:
-            # Compare current position in a 360 circle, see if intersects with any phenomena            
+            # Compare current position in a 360 circle, see if intersects
+            # with any phenomena
             detected_things = self.detect_things(
                 pos['position']['x'],
                 pos['position']['y'],
+                settings['device_range'],
                 self.current_level
             )
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 self.thing_found(detected_things[0])
         return True
+
+    def ghost_scan(self):
+        """ Ghost radar scan"""
+        return self.scan(self.radar_settings)
+
+    def ecto_scan(self):
+        """ Submit scan to Pi, receive proximity as percentage """
+        if self.DEBUG_MODE:
+            return random.random()
+        else:
+            return self.scan(self.ectoscope_settings)
+
+    def telegraph_transmit(self, msg):
+        """ Receive morse code from Micro:bit, return decoded letter """
+        if self.DEBUG_MODE:
+            return "A"
+        else:
+            if msg in code_lookup:
+                return code_lookup[msg]
+            else:
+                # bad code
+                return '?'
+
+    def decode_spiritsign(self, sign):
+        """ receive microbit.Image of sigil, return decoded string """
+        if self.DEBUG_MODE:
+            return "TEST"
+        else:
+            if sign in self.spiritsign_settings['signs']:
+                return self.spiritsign_settings['signs'][sign]
+            else:
+                # bad sign
+                return '?'
+
+    def tune_radio(self,msg):
+        """ ?"""
+        if self.DEBUG_MODE:
+            return "00000:09000:90909:00090:00000"

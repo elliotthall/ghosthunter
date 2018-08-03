@@ -55,7 +55,7 @@ class Hunter_test(unittest.TestCase):
         mock_server_config.assert_called_with()
 
     def test_trigger(self):
-        result = self.hunter.event_loop.run_until_complete(self.hunter.trigger())
+        result = self.hunter.event_loop.run_until_complete(self.hunter.hunt())
         self.assertEqual(result, True)
         self.assertEqual(self.hunter.device_ready, True)
 
@@ -72,9 +72,9 @@ class Hunter_test(unittest.TestCase):
             self.assertEqual(task.cancelled(), True)
 
     def test_execute_commands(self):
-        commands = [self.hunter.COMMAND_TRIGGER, self.hunter.COMMAND_SHUTDOWN]
+        commands = [self.hunter.COMMAND_HUNT, self.hunter.COMMAND_SHUTDOWN]
         mock_trigger = asynctest.CoroutineMock(return_value=True)
-        self.hunter.trigger = mock_trigger
+        self.hunter.hunt = mock_trigger
         asyncio.ensure_future(command_queue(self.hunter, commands))
         execute_task = asyncio.ensure_future(self.hunter.execute_commands())
         execute_task.add_done_callback(finish)

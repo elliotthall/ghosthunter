@@ -100,7 +100,7 @@ def startup(startup_image):
         )        
         microbit.display.show(startup_image)
         return True
-#  ************  Main device functions *************
+#  ************  Main device functions (mirrored in MainDevice) *************
         
 def ghost_scan():
     """ Submit scan to Pi, receive proximity as percentage """

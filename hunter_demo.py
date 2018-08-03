@@ -6,7 +6,7 @@ import pdb
 import aiohttp
 from shapely.geometry import Point
 
-from hunter.devices import ProximityDevice
+from hunter.devices import MainDevice
 from local import (POLTERGEIST_LOGIN, POLTERGEIST_PASSWORD)
 
 logging.basicConfig(
@@ -363,7 +363,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
         return True
 
 
-class SymposiumHunter(ProximityDevice):
+class SymposiumHunter(MainDevice):
     """ Demo device for sharing.  Will integrate some of the REST stuff  later
     if needed in main classes.
     """
