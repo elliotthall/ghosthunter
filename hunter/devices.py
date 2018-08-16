@@ -94,7 +94,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         return detected_things
 
     # todo async?
-    def thing_found(self, detected_thing):
+    def thing_found(self, detected_thing, settings):
         """
         Display that a thing has been found using Micro:bit
         - log thing found in hunt log
@@ -105,7 +105,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         # create microbit detection animation based on distance
         leds = int(
             math.ceil(
-                (1 - (detected_thing['distance'] / self.device_range)) * 25
+                (1 - (detected_thing['distance'] / settings['device_range'])) * 25
             )
         )
         if leds == 0:
@@ -177,16 +177,18 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
             )
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
-                self.thing_found(detected_things[0])
-        return True
+                return self.thing_found(detected_things[0], settings)
+        # todo return not found value to microbit
+        return False
 
     def ghost_scan(self):
         """ Ghost radar scan"""
         return self.scan(self.radar_settings)
 
     def ecto_scan(self):
-        """ Submit scan to Pi, receive proximity as percentage """
+        """ Ecto scan """
         if self.DEBUG_MODE:
+            # todo test value needed
             return random.random()
         else:
             return self.scan(self.ectoscope_settings)
@@ -194,24 +196,26 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
     def telegraph_transmit(self, msg):
         """ Receive morse code from Micro:bit, return decoded letter """
         if self.DEBUG_MODE:
-            return "A"
+            letter = "A"
         else:
             if msg in code_lookup:
-                return code_lookup[msg]
+                letter = code_lookup[msg]
             else:
                 # bad code
-                return '?'
+                letter = '?'
+        return [self.MICROBIT_CODES['data'], letter]
 
     def decode_spiritsign(self, sign):
         """ receive microbit.Image of sigil, return decoded string """
         if self.DEBUG_MODE:
-            return "TEST"
+            translation = "TEST"
         else:
             if sign in self.spiritsign_settings['signs']:
-                return self.spiritsign_settings['signs'][sign]
+                translation =  self.spiritsign_settings['signs'][sign]
             else:
                 # bad sign
-                return '?'
+                translation = '?'
+        return [self.MICROBIT_CODES['data'], translation]
 
     def tune_radio(self,msg):
         """ ?"""

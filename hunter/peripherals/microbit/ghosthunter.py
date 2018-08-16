@@ -14,6 +14,8 @@ def send_to_pi(code, value='0'):
     :param value: value such as button presse, -1 is default for no value
     """
     microbit.uart.write(code + b'\xFF' + bytes(value, 'UTF-8') + b'\n')
+    microbit.sleep(100)
+    return  get_pi_messages()
 
 
 def change_led(value):
@@ -118,11 +120,15 @@ def telegraph_transmit(msg):
     """ Transmit morse to Pi, receive translated letter (or effect result) """
     if debug:
         return "A"
+    else:
+        return send_to_pi(b'\x32', msg)
         
 def decode_spiritsign(sign):
     """ receive microbit.Image of sigil, submit string to pi, get decoded string """
     if debug:
         return "BOO!"
+    else:
+        return send_to_pi(b'\x33',sign)
         
 def tune_radio():
     """ ?"""

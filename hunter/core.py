@@ -501,7 +501,7 @@ class HunterUwbMicrobit(HunterBLE):
             # todo do something with accelerometer data
             pass
         if command:
-            self.command_queue.append(command)
+            self.command_queue[command] = value
         return command
 
     async def microbit_listen(self):
@@ -572,9 +572,6 @@ class HunterUwbMicrobit(HunterBLE):
                     logging.info('distance {}'.format(distance))
                 if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):
                     await self.uwb_pos_updated(result)
-                    
-
-
 
                 self.uwb_pos = result
                 await asyncio.sleep(0.2)
