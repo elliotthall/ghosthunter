@@ -336,19 +336,14 @@ class HunterUwbMicrobit(HunterBLE):
         'ready': b'\x01',
         'id': b'\x08',
         'id_return': b'\x09',
-        'input': b'\x10',
+        'hunt': b'\x10',
         'acc': b'\x11',
         'toggle_acc': b'\x15',
         'pixel': b'\x12',
         'image': b'\x13',
         'reset': b'\x14',
         'data': b'\x18',
-        # devices specifc codes for doing hunt work
-        'radar': b'\x30',
-        'ectoscope': b'\x31',
-        'telegraph': b'\x32',
-        'spiritsign': b'\x33',
-        'radio': b'\x34',
+    
     }
 
     BUTTON_A = 1
@@ -361,11 +356,13 @@ class HunterUwbMicrobit(HunterBLE):
         Since addresses are assigned in the order deivces are connected
         Test to make sure """
         # Establish connections
+        
         first_conn = utils.connect_serial(self.uwb_serial_address)
         second_conn = utils.connect_serial(self.microbit_serial_address)
         # Send an id message, verify this is a DWM
         first_conn.write(uwb.DWM_CFG_GET_MSG)
         return_type = first_conn.read()
+
         # Flush for safety
         first_conn.reset_input_buffer()
         first_conn.reset_output_buffer()
@@ -480,29 +477,7 @@ class HunterUwbMicrobit(HunterBLE):
             onoff
         )
 
-    def parse_microbit_serial_message(self, message):
-        """Parse any messages from microbit and
-        add to command queue as necesssary
 
-        :param message: line from micro:bit in bytes
-        :return command from message, if present
-        """
-        command = None
-        # '{}::{}\n'        
-        code = message[0:1]
-        value = str(message[2:-1], 'UTF-8')
-        if code == self.MICROBIT_CODES['input']:
-            if int(value) == self.BUTTON_A:
-                # Button a pressed
-                command = self.COMMAND_HUNT
-            if int(value) == self.BUTTON_B:
-                command = self.COMMAND_SHUTDOWN
-        elif code == self.MICROBIT_CODES['acc']:
-            # todo do something with accelerometer data
-            pass
-        if command:
-            self.command_queue[command] = value
-        return command
 
     async def microbit_listen(self):
         """ Listen for serial messages from Micro:bit, pass to parser"""
@@ -513,7 +488,7 @@ class HunterUwbMicrobit(HunterBLE):
                 message = await asyncio.wait_for(
                     future, 30, loop=self.event_loop)
                 if message:
-                    logging.debug(
+                    logging.info(
                         "Serial message received: {}".format(message))
                     self.parse_microbit_serial_message(message)
                 await asyncio.sleep(0.1)
