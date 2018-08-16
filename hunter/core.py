@@ -87,7 +87,7 @@ class Hunter(object):
         else:
             self.event_loop = event_loop
         self.event_queue = [
-            self.get_server_messages()
+            # self.get_server_messages()
         ]
         # Add device specific functionality
         for command in self.extra_device_functions():
@@ -99,7 +99,7 @@ class Hunter(object):
 
     async def server_config(self):
         """ Establish server connection, get extra config if necessary"""
-        await self.get_ghost_server_socket()
+        #await self.get_ghost_server_socket()
         # todo extra server vars?
         logging.info('Server config retrieved')
         return True

@@ -197,7 +197,7 @@ class LightBulbPoltergeistEvent(PoltergeistEvent):
     light_on = False
     light_location = None
     effect_range = 3000
-    finish_range = 200
+    finish_range = 300
     api_header = {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -468,7 +468,7 @@ def main():
             0: [
                 {'id': 0,
                  'name': 'Stay Puft Marshmallow Man',
-                 'geometry': Point(2700, 1050),
+                 'geometry': Point(4340, 1050),
                  'level': 0}
             ]
         }
@@ -480,16 +480,16 @@ def main():
                                 'uri': HA_API_URL + '/services/switch/turn_on',
                                 'json': {"entity_id": HA_ENTITY_PLUG1_2},
                                 }]
-        light_location = Point(6180, 1680)
+        light_location = Point(900, 1300)
 
         event_2 = LightBulbPoltergeistEvent(
             light_location=light_location,
-            active=False,
-            light_on=False
+            active=True,
+            light_on=True
         )
 
         event_1 = MozillaSimplePoltergeistEvent(
-            active=True,
+            active=False,
             trigger_points=plug_trigger_events,
             next_event=event_2
         )
@@ -514,8 +514,8 @@ def main():
                  'level': 0},
                  """
 
-        websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
-        hunter.websocket = websocket
+        #websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
+        #hunter.websocket = websocket
         try:
             hunter.bootup()
         except KeyboardInterrupt:
