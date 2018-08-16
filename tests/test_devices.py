@@ -14,7 +14,7 @@ class ProximityDevice_test(unittest.TestCase):
     def setUp(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        self.hunter = devices.ProximityDevice(loop)
+        self.hunter = devices.MainDevice(loop)
         self.hunter.uwb_pos = {
             'position': {
                 'x': 0.0,
@@ -75,7 +75,7 @@ class ProximityDevice_test(unittest.TestCase):
                          300
                          )
 
-    @patch('hunter.devices.ProximityDevice.microbit_serial')
+    @patch('hunter.devices.MainDevice.microbit_serial')
     def test_thing_found(self, mock_serial):
             expected_image = [
                 call(b'\x13\xff0;;99999:99999:00000:00000:00000\n'),

@@ -63,7 +63,7 @@ class Hunter(object):
     devive_ready = False
     # Device commands that can be triggered
     COMMAND_SHUTDOWN = 'SHUTDOWN'
-    COMMAND_TRIGGER = 'TRIGGER'
+    COMMAND_HUNT = 'TRIGGER'
 
     # Shutdown message from server
     MESSAGE_SHUTDOWN = 'SHUTDOWN'
@@ -71,7 +71,7 @@ class Hunter(object):
     # async events to run in loop
     event_queue = list()
     # Any commands received by socket, I/O e.g. trigger scan
-    command_queue = list()
+    command_queue = {}
 
     def __init__(self, event_loop=None, **kwargs):
         # todo create logger to record only hunt events such as detection
@@ -114,7 +114,7 @@ class Hunter(object):
         """ Perform commands and modify variables based on server
         messages"""
         if self.MESSAGE_SHUTDOWN in message:
-            self.command_queue.append(self.COMMAND_SHUTDOWN)
+            self.command_queue[self.COMMAND_SHUTDOWN] = ''
         return None
 
     async def get_server_messages(self):
@@ -187,9 +187,9 @@ class Hunter(object):
             asyncio.gather(*asyncio.Task.all_tasks()))
         return True
 
-    def trigger(self):
+    def hunt(self):
         """ Do whatever this device does. """
-        logging.info("triggering...")
+        logging.info("hunting...")
         return True
 
     def cancel_events(self):
@@ -208,15 +208,13 @@ class Hunter(object):
                     # Are there waiting commands?
                     if len(self.command_queue) > 0:
                         # Parse commands
-                        if self.COMMAND_SHUTDOWN in self.command_queue:
+                        if self.COMMAND_SHUTDOWN in self.command_queue.keys():
                             break
-                        elif self.COMMAND_TRIGGER in self.command_queue:
+                        elif self.COMMAND_HUNT in self.command_queue.keys():
                             if self.device_ready:
-                                self.command_queue.remove(self.COMMAND_TRIGGER)
-                                self.trigger()
-                                await asyncio.sleep(self.device_interval)
+                                self.hunt()
+                                del self.command_queue[self.COMMAND_HUNT]
                                 self.device_ready = True
-                                logging.info("Recharged and ready")
                     await asyncio.sleep(0.1)
                 except CancelledError:
                     logging.debug("execute_commands cancelled")
@@ -343,7 +341,14 @@ class HunterUwbMicrobit(HunterBLE):
         'toggle_acc': b'\x15',
         'pixel': b'\x12',
         'image': b'\x13',
-        'reset': b'\x14'
+        'reset': b'\x14',
+        'data': b'\x18',
+        # devices specifc codes for doing hunt work
+        'radar': b'\x30',
+        'ectoscope': b'\x31',
+        'telegraph': b'\x32',
+        'spiritsign': b'\x33',
+        'radio': b'\x34',
     }
 
     BUTTON_A = 1
@@ -489,7 +494,7 @@ class HunterUwbMicrobit(HunterBLE):
         if code == self.MICROBIT_CODES['input']:
             if int(value) == self.BUTTON_A:
                 # Button a pressed
-                command = self.COMMAND_TRIGGER
+                command = self.COMMAND_HUNT
             if int(value) == self.BUTTON_B:
                 command = self.COMMAND_SHUTDOWN
         elif code == self.MICROBIT_CODES['acc']:

@@ -2,7 +2,7 @@ import asyncio
 import concurrent.futures
 from concurrent.futures import CancelledError
 from hunter.core import HunterUwbMicrobit
-from hunter.devices import ProximityDevice
+from hunter.devices import MainDevice
 import logging
 from shapely.geometry import Point
 logging.basicConfig(
@@ -16,10 +16,10 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 def main():
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        hunter = ProximityDevice(loop, executor,
-            hunt_url='ws://demos.kaazing.com/echo',
-            MAC='78:4f:43:6c:cc:0f'
-        )
+        hunter = MainDevice(loop, executor,
+                            hunt_url='ws://demos.kaazing.com/echo',
+                            MAC='78:4f:43:6c:cc:0f'
+                            )
         hunter.detectable_things = {
             0: [
                 {'id': 0,
