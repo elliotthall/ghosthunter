@@ -163,28 +163,24 @@ class Hunter(object):
         result = self.device_startup_tasks()
         if not result:
             logging.error("Device specific tasks failed!")
+        
         for command in self.event_queue:
             asyncio.ensure_future(command)
         # Last, add the command parser
         execute_task = asyncio.ensure_future(
             self.execute_commands())
         execute_task.add_done_callback(stop_loop_callback)
-        # start the main event loop
-        self.device_ready = True
-        logging.info("Startup complete, running loop...")
-        if run_forever:
-            self.event_loop.run_forever()
+        self.device_ready = True                
         return True
 
     def shutdown(self):
-        """ Perform any final tasks such as logging before shutting down """
+        """ Perform any final tasks such as logging before shutting down """        
         logging.info("Shutting down...")
         # todo final report to server?
         logging.info("Closing websocket...")
         if self.websocket:
             self.event_loop.run_until_complete(self.websocket.close())
-        self.event_loop.run_until_complete(
-            asyncio.gather(*asyncio.Task.all_tasks()))
+        #self.cancel_events()
         return True
 
     def hunt(self):
@@ -212,16 +208,19 @@ class Hunter(object):
                             break
                         elif self.COMMAND_HUNT in self.command_queue.keys():
                             if self.device_ready:
-                                self.hunt()
-                                del self.command_queue[self.COMMAND_HUNT]
-                                self.device_ready = True
+                                self.hunt()                                                                
                     await asyncio.sleep(0.1)
                 except CancelledError:
                     logging.debug("execute_commands cancelled")
                     break
+                except KeyboardInterrupt:
+                    print('Interrupted')
+                    break
+        except CancelledError:
+            logging.debug("execute_commands cancelled")                    
         finally:
             logging.debug("Stopping main loop")
-        self.cancel_events()
+        #self.cancel_events()
         return True
 
 
@@ -281,9 +280,8 @@ class HunterBLE(Hunter):
         :return:
         """
         logging.info('Bluetooth starting up...')
-        while True:
-            try:
-
+        try:
+            while True:
                 devices = await self.event_loop.run_in_executor(
                     self.executor, self.ble_scan)
                 scan_results = self.get_ble_devices(devices)
@@ -292,9 +290,9 @@ class HunterBLE(Hunter):
                         logging.info("Discovered BLE device {}".format(scan))
                 # write results to class
                 self.current_ble_devices = scan_results
-            except CancelledError:
+        except CancelledError:
                 logging.info("Bluetooth finished")
-                break
+                #break
         return True
 
         # return scan_results
@@ -302,7 +300,8 @@ class HunterBLE(Hunter):
     def extra_device_functions(self):
         """ Add bluetooth scan to loop"""
         device_functions = super(HunterBLE, self).extra_device_functions()
-        device_functions.append(self.bluetooth_scan())
+        # temp remove
+        # device_functions.append(self.bluetooth_scan())
         return device_functions
 
 
@@ -355,8 +354,7 @@ class HunterUwbMicrobit(HunterBLE):
         """Establish UART connections to UWB and Micro:bit
         Since addresses are assigned in the order deivces are connected
         Test to make sure """
-        # Establish connections
-        
+        # Establish connections        
         first_conn = utils.connect_serial(self.uwb_serial_address)
         second_conn = utils.connect_serial(self.microbit_serial_address)
         # Send an id message, verify this is a DWM
@@ -396,7 +394,7 @@ class HunterUwbMicrobit(HunterBLE):
             self.uwb_reset()
             self.microbit_reset()
             # Give boards time to reset
-            time.sleep(0.3)
+            time.sleep(3)
             # Query boards
             try:
                 micro_result = self.microbit_serial.readline()
@@ -437,7 +435,7 @@ class HunterUwbMicrobit(HunterBLE):
         else:
             logging.warning('Trying to read microbit msg over closed uart')
 
-    def microbit_write(self, code, message='0'):
+    def microbit_write(self, code, message='0', delay=0.1):
         """
         Send a message to the Micro:bit in the format
         code:separator:message:\n
@@ -445,12 +443,20 @@ class HunterUwbMicrobit(HunterBLE):
         :type code:bytes
         :param code:
         :param message:
+        :para, delay: wait before sending results (see note below)
         :return:
         """
 
         if self.microbit_serial.is_open:
-            self.microbit_serial.write(
-                code + self.SEPARATOR + bytes(message, 'utf-8') + b'\n')
+            msg = code + self.SEPARATOR + bytes(message, 'utf-8') + b'\n'
+            logging.debug("To mictobit: {}".format(msg))
+            #pdb.set_trace()
+            """ 
+            Added this because returning results 'too fast'
+            seems to break the micro:bit. Not sure why yet.
+            """
+            time.sleep(delay)
+            self.microbit_serial.write(msg)
         else:
             logging.warning(
                 'Trying to send microbit msg over closed uart {}'.format(
@@ -540,12 +546,13 @@ class HunterUwbMicrobit(HunterBLE):
                                 float(result['position']['y'])
                                )
                     distance = old_pos.distance(new_pos)
-
+                    """
                     logging.debug('New position {}, {}'.format(
                            result['position']['x'],result['position']['y']
                        )
                     )               
                     logging.debug('distance {}'.format(distance))
+                    """
 
                 if (self.uwb_pos is None) or (distance >= self.uwb_tolerance):
                     await self.uwb_pos_updated(result)

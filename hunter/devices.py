@@ -49,7 +49,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
     # Ghost Radar
     radar_settings = {
         # Detection range (in mm)
-        "device_range": 5000
+        "device_range": 5000,        
     }
 
     # Ectoscope
@@ -121,6 +121,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         """
 
         # create microbit detection animation based on distance
+        """
         leds = int(
             math.ceil(
                 (1 - (detected_thing['distance'] / settings['device_range'])) * 25
@@ -147,8 +148,12 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
                 detected_thing['distance'],
                 leds
             )
-        )
+        )   
         return [self.MICROBIT_CODES['image'], image]
+        """     
+        return [self.MICROBIT_CODES['data'],
+                str(1 - (detected_thing['distance'] / settings['device_range']))
+                ]
 
 
     def hunt(self):
@@ -177,6 +182,8 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
             result = self.tune_radio(value)
         if result is not None:            
             self.microbit_write(result[0], result[1])
+        del self.command_queue[self.COMMAND_HUNT]
+        self.device_ready = True
 
     """ **************  Hunting functions *********************   """
 
@@ -197,7 +204,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
                 # Something found, display proximity to nearest thing
                 return self.thing_found(detected_things[0], settings)
         # todo return not found value to microbit
-        return False
+        return [self.MICROBIT_CODES['image'], '0']
 
     def parse_microbit_serial_message(self, message):
         """Parse any messages from microbit and
