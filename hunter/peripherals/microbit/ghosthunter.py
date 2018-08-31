@@ -1,5 +1,4 @@
 ﻿import microbit
-import random
 
 loop_delay = 100
 use_acc = False
@@ -15,8 +14,7 @@ def send_to_pi(code, value='0'):
     :param value: value such as button presse, -1 is default for no value
     """
     microbit.uart.write(code + b'\xFF' + bytes(value, 'UTF-8') + b'\n')
-    microbit.sleep(100)
-    return get_pi_messages()
+    return get_pi_messages(20)
 
 
 def display_image(value):
@@ -65,25 +63,31 @@ def do_pi_command(line):
         microbit.reset()
     elif code == b'\x08':
         send_device_id()
-    elif code == code == b'\x12':
-        # change led
-        change_led(value)
     elif code == b'\x13':
         display_image(value)
 
 
-def get_pi_messages():
-    if microbit.uart.any():
-        # Read uart message
-        line = microbit.uart.readline()
-        if line[0:1] == '\x18':
+def get_pi_messages(timeout=1):
+    line = None
+    x = 0
+    while x < timeout:
+        if microbit.uart.any():
+            # Read uart message
+            line = microbit.uart.readline()
+            break
+        microbit.sleep(100)
+        x += 1
+
+    if line:
+        if line[0:1] == b'\x18':
             # data
             return line[2:-1]
         else:
             # if it's a command
             do_pi_command(line)
-        # else if it's data (scanning etc.) return it
-        # so device can parse it
+            # else if it's data (scanning etc.) return it
+            # so device can parse it
+
     return None
 
 
@@ -102,38 +106,38 @@ def startup(startup_image):
 
 #  ************  Main device functions (mirrored in MainDevice) *************
 
+def scan(code):
+    response = send_to_pi(code)
+    if response is not None:
+        return str(response, 'utf-8')
+    return None
+
+
 def ghost_scan():
     """ Submit scan to Pi, receive proximity as percentage """
-    microbit.display.show(microbit.Image.ALL_CLOCKS, delay=300)
-    microbit.display.show(microbit.Image.CLOCK12, delay=300)
-    if debug:
-        random.random()
+    microbit.display.show(microbit.Image.ALL_CLOCKS, delay=200)
+    microbit.display.show(microbit.Image.CLOCK12, delay=200)
+    return scan(b'\xa0')
 
 
 def ecto_scan():
-    """ Submit scan to Pi, receive proximity as percentage """
-    if debug:
-        return random.random()
+    return scan(b'\xa1')
 
 
 def telegraph_transmit(msg):
     """ Transmit morse to Pi, receive translated letter (or effect result) """
-    if debug:
-        return do_pi_command(b'\x18\xFFS')
-    else:
-        response = send_to_pi(b'\xa2', msg)
-        if response is not None:
-            return str(response, 'utf-8')
-        return None
+    response = send_to_pi(b'\xa2', msg)
+    if response is not None:
+        return str(response, 'utf-8')
+    return None
 
 
 def decode_spiritsign(sign):
-    """ receive microbit.Image of sigil, submit string to pi, get decoded
-    string """
+    """ receive microbit.Image of sigil, submit, get decoded string """
     if debug:
         return "BOO!"
     else:
-        return send_to_pi(b'\x33', sign)
+        return send_to_pi(b'\xa3', sign)
 
 
 def tune_radio():
