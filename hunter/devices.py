@@ -4,6 +4,7 @@ import logging
 import math
 import random
 from operator import itemgetter
+import pdb
 
 from shapely.geometry import Point
 
@@ -33,6 +34,15 @@ code_lookup = {v: k for k, v in
 class MainDevice(hunter_core.HunterUwbMicrobit):
     """ This class contains all the various hunter detector
      functions, merged together for ease of deployment """
+
+     # devices specifc codes for doing hunt work
+    microbit_device_codes = {
+        'radar': b'\xa0',
+        'ectoscope': b'\xa1',
+        'telegraph': b'\xa2',
+        'spiritsign': b'\xa3',
+        'radio': b'\xa4',
+    }
 
     """ variable settings for all devices """
 
@@ -153,20 +163,20 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         """
         command = self.command_queue[self.COMMAND_HUNT]
         code = command[0:1]
-        value = command[2:-1]
+        value = str(command[2:-1], 'UTF-8')
         result = None
-        if code == self.MICROBIT_CODES['radar']:
+        if code == self.microbit_device_codes['radar']:
             result = self.ghost_scan()
-        elif code == self.MICROBIT_CODES['ectoscope']:
+        elif code == self.microbit_device_codes['ectoscope']:
             result = self.ecto_scan()
-        elif code == self.MICROBIT_CODES['telegraph']:
+        elif code == self.microbit_device_codes['telegraph']:
             result = self.telegraph_transmit(value)
-        elif code == self.MICROBIT_CODES['spiritsign']:
+        elif code == self.microbit_device_codes['spiritsign']:
             result = self.decode_spiritsign(value)
-        elif code == self.MICROBIT_CODES['radio']:
+        elif code == self.microbit_device_codes['radio']:
             result = self.tune_radio(value)
-        if result is not None:
-            self.microbit_write()
+        if result is not None:            
+            self.microbit_write(result[0], result[1])
 
     """ **************  Hunting functions *********************   """
 
@@ -189,6 +199,34 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         # todo return not found value to microbit
         return False
 
+    def parse_microbit_serial_message(self, message):
+        """Parse any messages from microbit and
+        add to command queue as necesssary
+
+        :param message: line from micro:bit in bytes
+        :return command from message, if present
+        """
+        command = None
+        # '{}::{}\n'        
+        code = message[0:1]
+        value = str(message[2:-1], 'UTF-8')        
+        if code in self.microbit_device_codes.values():
+            self.command_queue[self.COMMAND_HUNT] = message            
+        """
+        if code == self.MICROBIT_CODES['input']:
+            if int(value) == self.BUTTON_A:
+                # Button a pressed
+                command = self.COMMAND_HUNT
+            if int(value) == self.BUTTON_B:
+                command = self.COMMAND_SHUTDOWN
+        elif code == self.MICROBIT_CODES['acc']:
+            # todo do something with accelerometer data
+            pass
+        """
+        #if command:
+        #    self.command_queue[command] = value
+        return command
+
     def ghost_scan(self):
         """ Ghost radar scan"""
         return self.scan(self.radar_settings)
@@ -203,9 +241,12 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
 
     def telegraph_transmit(self, msg):
         """ Receive morse code from Micro:bit, return decoded letter """
+        
         if self.DEBUG_MODE:
             letter = "A"
         else:
+            
+            
             if msg in code_lookup:
                 letter = code_lookup[msg]
             else:
