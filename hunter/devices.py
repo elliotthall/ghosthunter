@@ -63,7 +63,7 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         # sigils that can be decoded
         'signs':{
             # empty sign for convenience of making real ones
-            "00000:00000:00000:00000:00000":"Test",
+            "90000:00000:00000:00000:00000":"Test",
             "90009:00000:00000:00000:90009": "BOO!"
         }
     }
