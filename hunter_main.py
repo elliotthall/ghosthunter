@@ -6,10 +6,11 @@ from hunter.devices import MainDevice
 import logging
 from shapely.geometry import Point
 logging.basicConfig(
-	level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
+	level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
+# normal
+run_forever = True
 
 
 
@@ -38,7 +39,10 @@ def main():
         websocket = loop.run_until_complete(hunter.get_ghost_server_socket())
         hunter.websocket = websocket        
         try:
-            hunter.bootup()
+            if hunter.bootup() is True:
+                logging.info("Startup complete, running loop...")
+                if run_forever:
+                    hunter.event_loop.run_forever()
         except KeyboardInterrupt:
             print('Interrupted')
             hunter.shutdown()
