@@ -1,5 +1,5 @@
 let reading = 0
-function displayResult() {
+function displayReading() {
     led.plotBarGraph(
     reading,
     10
@@ -19,10 +19,10 @@ function hunt() {
         images.iconImage(IconNames.Diamond).showImage(0)
         control.waitMicros(2000)
         basic.clearScreen()
-    }
-    if (reading > 0) {
-        displayResult()
-        reading = 0
+        if (reading > 0) {
+            displayReading()
+            reading = 0
+        }
     }
 }
 startup()
