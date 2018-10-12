@@ -30,6 +30,35 @@ class GhostHunter(object):
     # fluctuation in uwb readings for hunter movement
     uwb_tolerance = 100
 
+    async def main_device_loop(self):
+        """ Where the magic happens."""
+        try:
+            while True:
+                try:
+                    # get position
+
+                    # message from server
+
+                    # message from microbit
+
+                    # Do hunt
+
+                    await asyncio.sleep(0.1)
+                except CancelledError:
+                    logging.debug("execute_commands cancelled")
+                    break
+                except KeyboardInterrupt:
+                    print('Interrupted')
+                    break
+        except CancelledError:
+            logging.debug("execute_commands cancelled")
+        finally:
+            logging.debug("Stopping main loop")
+
+        return True
+
+
+
     def init_serial_connections(self):
         """Establish UART connections to UWB and Micro:bit
         Since addresses are assigned in the order deivces are connected
@@ -60,25 +89,35 @@ class GhostHunter(object):
             self.uwb_serial = second_conn
         return True
 
-#######     Startup     #########
-
-hunter = GhostHunter()
-
-# Test and open serials
-hunter.init_serial_connections()
-
+    def close_serial_connections(self):
+        if self.uwb_serial is not None:
+            self.uwb_serial.close()
+        if self.microbit_serial is not None:
+            self.microbit_serial.close()
 
 
-# Main command loop
-    # Run endless loop
-    # get position
-    # message from server
-    # message from microbit
-       # Do hunt
-#finish
-# close logs
-# close serial
 
+def main():
+    #######     Startup            #########
+
+    hunter = GhostHunter()
+
+    # Test and open serials
+    hunter.init_serial_connections()
+
+    # Server?
+
+    ####### Main command loop     #######
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        loop.run_until_complete(hunter.main_device_loop())
+
+    #####     finish      #############
+
+    # close logs
+
+    # close serial
+    hunter.close_serial_connections()
 
 
 #uwb_serial_address = '/dev/ttyACM0'
@@ -90,3 +129,5 @@ hunter.init_serial_connections()
 #uwb_serial.close()
 
 
+if __name__ == '__main__':
+    main()
