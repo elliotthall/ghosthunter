@@ -79,6 +79,14 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
                          "00000:07770:07070:07770:00000," +
                          "99999:90009:90009:90009:99999")
 
+    def extra_device_functions(self):
+        """ Add microbit, uwb listeners to loop"""
+        # todo overriden to temporarily remove ble
+        return [
+            self.microbit_listen(),
+            self.uwb_get_pos()
+        ]
+
     def detect_things(self, x, y, device_range, level=0):
         """
         Use shapely to find 'detectable' objects
