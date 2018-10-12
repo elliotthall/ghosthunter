@@ -215,23 +215,14 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
         """
         command = None
         # '{}::{}\n'        
-        code = message[0:1]
-        value = str(message[2:-1], 'UTF-8')        
+        #code = message[0:1]
+        #value = str(message[2:-1], 'UTF-8')        
+        msg = str(message, 'UTF-8')
+        code =  msg[0]  
+        pdb.set_trace()
         if code in self.microbit_device_codes.values():
             self.command_queue[self.COMMAND_HUNT] = message            
-        """
-        if code == self.MICROBIT_CODES['input']:
-            if int(value) == self.BUTTON_A:
-                # Button a pressed
-                command = self.COMMAND_HUNT
-            if int(value) == self.BUTTON_B:
-                command = self.COMMAND_SHUTDOWN
-        elif code == self.MICROBIT_CODES['acc']:
-            # todo do something with accelerometer data
-            pass
-        """
-        #if command:
-        #    self.command_queue[command] = value
+        
         return command
 
     def ghost_scan(self):
