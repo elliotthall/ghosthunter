@@ -29,19 +29,47 @@ class GhostHunter(object):
     # tolerance (in mm) to ignore so that we don't mistake
     # fluctuation in uwb readings for hunter movement
     uwb_tolerance = 100
+    #Is the main loop on?
+    running = False
+
+    microbit_device_codes = {
+        'radar': 'G',
+        'ectoscope': 'E',
+        'telegraph': 'T',
+        'spiritsign': 'S'
+    }
+
+    MICROBIT_CODES = {
+        'ready': b'\x01',
+        'id': b'\x08',
+        'id_return': b'\x09',
+        'hunt': b'\x10',
+        'acc': b'\x11',
+        'toggle_acc': b'\x15',
+        'pixel': b'\x12',
+        'image': b'\x13',
+        'reset': b'\x14',
+        'data': b'\x18',
+
+    }
 
     async def main_device_loop(self):
         """ Where the magic happens."""
         try:
+            self.running = True
             while True:
+                logging.debug("Starting main loop")
+                self.log_position()
                 try:
                     # get position
 
                     # message from server
 
                     # message from microbit
-
-                    # Do hunt
+                    microbit_message = self.microbit_read()
+                    if microbit_message is not None:
+                        # Do hunt
+                        self.hunt(microbit_message)
 
                     await asyncio.sleep(0.1)
                 except CancelledError:
@@ -53,8 +81,22 @@ class GhostHunter(object):
         except CancelledError:
             logging.debug("execute_commands cancelled")
         finally:
+            self.running = False
             logging.debug("Stopping main loop")
 
+        return True
+
+    def hunt(self,message):
+        pass
+
+    async def log_position(self):
+        """ Get the uwb position if it can and log it"""
+        while self.running is True:
+            # Get uwb position
+            # if it's not empty
+            # have we got an xy for the room? log it
+            #are we near any points of interest? log it
+            await asyncio.sleep(30)
         return True
 
 
@@ -94,6 +136,57 @@ class GhostHunter(object):
             self.uwb_serial.close()
         if self.microbit_serial is not None:
             self.microbit_serial.close()
+
+    # ********** Micro:Bit functions ****************
+
+    def microbit_read(self):
+            """
+            If microbit port is open and data present, read and return
+            :return: line from microbit serial
+            """
+            if self.microbit_serial.is_open:
+                if self.microbit_serial.in_waiting > 0:
+                    line = self.microbit_serial.readline()
+                    return line
+                else:
+                    return None
+            else:
+                logging.warning('Trying to read microbit msg over closed uart')
+
+    def microbit_write(self, code, message='0', delay=0.1):
+        """
+        Send a message to the Micro:bit in the format
+        code:separator:message:\n
+        :type message:str
+        :type code:bytes
+        :param code:
+        :param message:
+        :para, delay: wait before sending results (see note below)
+        :return:
+        """
+
+        if self.microbit_serial.is_open:
+            msg = code + self.SEPARATOR + bytes(message, 'utf-8') + b'\n'
+            logging.debug("To mictobit: {}".format(msg))
+            #pdb.set_trace()
+            """ 
+            Added this because returning results 'too fast'
+            seems to break the micro:bit. Not sure why yet.
+            """
+            time.sleep(delay)
+            self.microbit_serial.write(msg)
+        else:
+            logging.warning(
+                'Trying to send microbit msg over closed uart {}'.format(
+                    message
+                ))
+
+    def microbit_reset(self):
+        """Send a reset command to the attached micro:bit"""
+        self.microbit_write(
+            self.MICROBIT_CODES['reset'],
+            '0'
+        )
 
 
 
