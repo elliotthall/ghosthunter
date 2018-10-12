@@ -37,11 +37,11 @@ class MainDevice(hunter_core.HunterUwbMicrobit):
 
      # devices specifc codes for doing hunt work
     microbit_device_codes = {
-        'radar': b'\xa0',
-        'ectoscope': b'\xa1',
-        'telegraph': b'\xa2',
-        'spiritsign': b'\xa3',
-        'radio': b'\xa4',
+        'radar': 'G',
+        'ectoscope': 'E',
+        'telegraph': 'T',
+        'spiritsign': 'S'
+        #'radio': b'\xa4',
     }
 
     """ variable settings for all devices """
