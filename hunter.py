@@ -57,9 +57,9 @@ class GhostHunter(object):
         """ Where the magic happens."""
         try:
             self.running = True
+            logging.debug("Starting main loop")
+            self.log_position()
             while True:
-                logging.debug("Starting main loop")
-                self.log_position()
                 try:
                     # get position
 
@@ -96,6 +96,7 @@ class GhostHunter(object):
             # if it's not empty
             # have we got an xy for the room? log it
             #are we near any points of interest? log it
+            logging.debug("Position logged")
             await asyncio.sleep(30)
         return True
 
