@@ -51,6 +51,11 @@ class GhostHunter(object):
     OUT_SEPARATOR = "::"
     # Message FROM Micro:Bit
     IN_SEPARATOR = ";;"
+    # Pi command channel for telling microbit to do things
+    command_channel = '$'
+    # Return channel for returning results of microbit requests
+    return_channel = '}'
+
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
     # last position object received from DWM board
@@ -126,7 +131,7 @@ class GhostHunter(object):
                     # message from microbit
                     microbit_message = self.microbit_read()
                     if microbit_message is not None:
-                        pdb.set_trace()
+                        # pdb.set_trace()
                         # Do hunt
                         self.hunt(microbit_message)
 
@@ -221,27 +226,26 @@ class GhostHunter(object):
             else:
                 logging.warning('Trying to read microbit msg over closed uart')
 
-    def microbit_write(self, code, message='0', delay=0.1):
+    def microbit_write(self, message='0', channel=return_channel, delay=0.1):
         """
         Send a message to the Micro:bit in the format
         code:separator:message:\n
         :type message:str
-        :type code:bytes
-        :param code:
+        :type code:bytes        
         :param message:
         :para, delay: wait before sending results (see note below)
         :return:
         """
 
         if self.microbit_serial.is_open:
-            msg = code + bytes(self.OUT_SEPARATOR + message, 'utf-8') + b'\n'
+            msg = bytes(message+channel, 'utf-8')
             logging.debug("To microbit: {}".format(msg))
             #pdb.set_trace()
             """ 
             Added this because returning results 'too fast'
             seems to break the micro:bit. Not sure why yet.
             """
-            time.sleep(delay)
+            # time.sleep(delay)
             self.microbit_serial.write(msg)
         else:
             logging.warning(
@@ -252,8 +256,8 @@ class GhostHunter(object):
     def microbit_reset(self):
         """Send a reset command to the attached micro:bit"""
         self.microbit_write(
-            self.MICROBIT_CODES['reset'],
-            '0'
+            'reset'+self.OUT_SEPARATOR,
+            self.command_channel
         )
 
     """ **************  Hunting functions *********************   """
@@ -262,7 +266,7 @@ class GhostHunter(object):
         """ Scan function used for both radar and ectoscope
         :return int 0-10 proximity to something
         """
-        logging.debug("Ghost radar scanning...")
+        
         pos = self.uwb_pos
         proximity = 0
         if pos:
@@ -278,9 +282,12 @@ class GhostHunter(object):
                 # Something found, display proximity to nearest thing
                 return self.thing_found(detected_things[0], settings)
         # return not found value to microbit
+        self.microbit_write(str(proximity))
+        """
         self.microbit_serial.write(
-            bytes(str(proximity), 'utf-8') + b'\r'
+            bytes(str(proximity), 'utf-8') + b'}'
         )
+        """
         return proximity
 
     # def parse_microbit_serial_message(self, message):
@@ -304,10 +311,12 @@ class GhostHunter(object):
 
     def ghost_scan(self):
         """ Ghost radar scan"""
+        logging.debug("Ghost radar scanning...")
         return self.scan(self.radar_settings)
 
     def ecto_scan(self):
         """ Ecto scan """
+        logging.debug("Ecto scan...")
         if self.DEBUG_MODE:
             # todo test value needed
             return random.random()
@@ -392,8 +401,8 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
-    #if hunter.microbit_serial is not None:
-    #    hunter.microbit_reset()
+    if hunter.microbit_serial is not None:
+        hunter.microbit_reset()
     # Server?
 
     ####### Main command loop     #######
