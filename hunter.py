@@ -259,9 +259,12 @@ class GhostHunter(object):
     """ **************  Hunting functions *********************   """
 
     def scan(self, settings):
-        """ Scan function used for both radar and ectoscope """
+        """ Scan function used for both radar and ectoscope
+        :return int 0-10 proximity to something
+        """
         logging.debug("Ghost radar scanning...")
         pos = self.uwb_pos
+        proximity = 0
         if pos:
             # Compare current position in a 360 circle, see if intersects
             # with any phenomena
@@ -274,8 +277,11 @@ class GhostHunter(object):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 return self.thing_found(detected_things[0], settings)
-        # todo return not found value to microbit
-        return [self.MICROBIT_CODES['image'], '0']
+        # return not found value to microbit
+        self.microbit_serial.write(
+            bytes(str(proximity), 'utf-8') + b'\r'
+        )
+        return proximity
 
     # def parse_microbit_serial_message(self, message):
     #     """Parse any messages from microbit and
