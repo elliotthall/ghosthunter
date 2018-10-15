@@ -47,7 +47,10 @@ class GhostHunter(object):
 
     microbit_serial_address = '/dev/ttyACM1'
     microbit_serial = None
-    SEPARATOR = "::"
+    # Commands sent TO Micro:Bit
+    OUT_SEPARATOR = "::"
+    # Message FROM Micro:Bit
+    IN_SEPARATOR = ";;"
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
     # last position object received from DWM board
@@ -144,7 +147,7 @@ class GhostHunter(object):
 
     def hunt(self, message):
         msg = str(message, 'UTF-8')
-        (code, value) = msg.split(self.SEPARATOR)
+        (code, value) = msg.split(self.IN_SEPARATOR)
         result = None
         if code == self.microbit_device_codes['radar']:
             result = self.ghost_scan()
@@ -231,8 +234,8 @@ class GhostHunter(object):
         """
 
         if self.microbit_serial.is_open:
-            msg = code + bytes(self.SEPARATOR + message, 'utf-8') + b'\n'
-            logging.debug("To mictobit: {}".format(msg))
+            msg = code + bytes(self.OUT_SEPARATOR + message, 'utf-8') + b'\n'
+            logging.debug("To microbit: {}".format(msg))
             #pdb.set_trace()
             """ 
             Added this because returning results 'too fast'
@@ -383,8 +386,8 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
-    if hunter.microbit_serial is not None:
-        hunter.microbit_reset()
+    #if hunter.microbit_serial is not None:
+    #    hunter.microbit_reset()
     # Server?
 
     ####### Main command loop     #######
