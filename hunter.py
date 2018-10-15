@@ -383,7 +383,8 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
-
+    if hunter.microbit_serial is not None:
+        hunter.microbit_reset()
     # Server?
 
     ####### Main command loop     #######
