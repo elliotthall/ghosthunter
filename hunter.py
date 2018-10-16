@@ -12,6 +12,7 @@ import logging
 import hunter.utils as utils
 from shapely.geometry import Point
 from operator import itemgetter
+import math
 import pdb
 
 logging.basicConfig(
@@ -65,7 +66,22 @@ class GhostHunter(object):
     uwb_tolerance = 100
     # These are shapely geometries of things the device can detect
     # dict of lists split by level/room, updated by server as hunt develops
-    detectable_things = None
+    detectable_things = {
+            0: [
+                {'id': 0,
+                 'name': 'Stay Puft Marshmallow Man',
+                 'geometry': Point(4340, 1050),
+                 'level': 0}
+            ]
+        }
+    # These are ids of anchors serving as beacons for detection
+    # DB92 = 56210
+    detectable_anchors = {
+        56210:{
+            'name': 'GMeter Test 1'
+        }
+    }
+
     # Current level - in scratch this will be the room we're in
     current_level = 0
 
@@ -158,6 +174,8 @@ class GhostHunter(object):
             result = self.ghost_scan()
         elif code == self.microbit_device_codes['ectoscope']:
             result = self.ecto_scan()
+        elif code == self.microbit_device_codes['telegraph']:
+            result = self.telegraph_transmit()
         return result
 
 
@@ -267,47 +285,27 @@ class GhostHunter(object):
         :return int 0-10 proximity to something
         """
         
-        pos = self.uwb_pos
+        pos = uwb.dwm_serial_get_loc(self.uwb_serial)
         proximity = 0
         if pos:
             # Compare current position in a 360 circle, see if intersects
             # with any phenomena
             detected_things = self.detect_things(
-                pos['position']['x'],
-                pos['position']['y'],
+                pos,
                 settings['device_range'],
                 self.current_level
             )
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
-                return self.thing_found(detected_things[0], settings)
+                thing = detected_things[0]
+                full_proximity = (1 - thing['distance'] / range) * 10
+                if full_proximity > 0 and full_proximity < 1:
+                    proximity = 1
+                else:
+                    proximity = math.floor(full_proximity)
         # return not found value to microbit
         self.microbit_write(str(proximity))
-        """
-        self.microbit_serial.write(
-            bytes(str(proximity), 'utf-8') + b'}'
-        )
-        """
         return proximity
-
-    # def parse_microbit_serial_message(self, message):
-    #     """Parse any messages from microbit and
-    #     add to command queue as necesssary
-    #
-    #     :param message: line from micro:bit in bytes
-    #     :return command from message, if present
-    #     """
-    #     command = None
-    #     # '{}::{}\n'
-    #     # code = message[0:1]
-    #     # value = str(message[2:-1], 'UTF-8')
-    #     msg = str(message, 'UTF-8')
-    #     code = msg[0]
-    #     pdb.set_trace()
-    #     if code in self.microbit_device_codes.values():
-    #         self.command_queue[self.COMMAND_HUNT] = message
-    #
-    #     return command
 
     def ghost_scan(self):
         """ Ghost radar scan"""
@@ -352,13 +350,27 @@ class GhostHunter(object):
 
     #########  UWB Functions ######################
 
-    def detect_things(self, x, y, device_range, level=0):
+    def detect_things(self, pos, device_range, level=0):
         """
         Use shapely to find 'detectable' objects
         :param level: to separate storeys of a building, or rooms
         :return: features found, None if nothing found
         """
         detected_things = list()
+        # get pos and anchors
+        anchors = pos['anchors']
+        x = pos['position']['x']
+        y = pos['position']['y']
+
+        # First are any visible anchors in our detect list?
+        for anchor_id in anchors.keys():
+            if anchor_id in self.detectable_anchors:
+                anchor=anchors[anchor_id]
+                # are they in range?
+                if device_range >= anchor['distance']:
+                    detected_things.append(anchor)
+
+        # todo Are we on a grid?
         if self.uwb_pos and self.detectable_things:
 
             # Make a point from current coordinates, buffer it
@@ -375,21 +387,6 @@ class GhostHunter(object):
         # sort by nearest
         detected_things = sorted(detected_things, key=itemgetter('distance'))
         return detected_things
-
-    # todo async?
-    def thing_found(self, detected_thing, settings):
-        """
-        Display that a thing has been found using Micro:bit
-        - log thing found in hunt log
-        :param detected_thing: thing detected
-        :return: true when done
-        """
-
-        # create microbit detection animation based on distance
-
-        return [self.MICROBIT_CODES['data'],
-                str(1 - (detected_thing['distance'] / settings['device_range']))
-                ]
 
 
 
