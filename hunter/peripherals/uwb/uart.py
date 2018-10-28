@@ -160,9 +160,9 @@ def dwm_serial_get_pos(serial_connection, message):
     :returns position dict
     """
 
+    uwb_locations = {}
     try:
         response = serial_api_call(serial_connection, message)
-        uwb_locations = {}
 
         if response != 0:
             # make sure we're getting what we expect
@@ -179,6 +179,10 @@ def dwm_serial_get_pos(serial_connection, message):
             else:
                 logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
     except KeyError as e:
+        logging.error(e)
+    except TypeError:
+        logging.error("Bad response from uwb: {}".format(response))
+    except Exception as e:
         logging.error(e)
     return uwb_locations
 
