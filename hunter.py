@@ -1,25 +1,22 @@
 """
-Simplified version of script for scratch performance.  No OOP, just what we need.
+Simplified version of script for scratch performance.  No OOP, just what we
+need.
 """
-import hunter.peripherals.uwb.uart as uwb
-import time
-import serial
-import random
 import asyncio
-import concurrent.futures
-from concurrent.futures import CancelledError
 import logging
-import hunter.utils as utils
-from shapely.geometry import Point
-from operator import itemgetter
 import math
-import pdb
+import random
+from concurrent.futures import CancelledError
+from operator import itemgetter
+
+from shapely.geometry import Point
+
+import hunter.peripherals.uwb.uart as uwb
+import hunter.utils as utils
 
 logging.basicConfig(
-	level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
+    level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-
 
 """ Morse codes for morse decoder """
 morse_codes = {'A': '.-', 'B': '-...', 'C': '-.-.',
@@ -41,6 +38,7 @@ morse_codes = {'A': '.-', 'B': '-...', 'C': '-.-.',
 code_lookup = {v: k for k, v in
                morse_codes.items()
                }
+
 
 class GhostHunter(object):
     """ This class contains all the various hunter detector
@@ -66,18 +64,35 @@ class GhostHunter(object):
     uwb_tolerance = 100
     # These are shapely geometries of things the device can detect
     # dict of lists split by level/room, updated by server as hunt develops
+    # Room ids: 0 = Porter's MEss
+    # 1 = Outside Member's Bar
+    # 2 = Nook (If we use it.)
     detectable_things = {
-            0: [
-                {'id': 0,
-                 'name': 'Stay Puft Marshmallow Man',
-                 'geometry': Point(4340, 1050),
-                 'level': 0}
-            ]
-        }
+        0: [
+            {'id': 0,
+             'name': 'Outside Door',
+             'geometry': Point(-200, 1090),
+             },
+
+            {'id': 1,
+             'name': 'Inside Door',
+             'geometry': Point(1080, 1350),
+             },
+            {'id': 2,
+             'name': 'Room 1',
+             'geometry': Point(2310, 2870),
+             },
+            {'id': 3,
+             'name': 'Lamp',
+             'geometry': Point(2300, 6180),
+             },
+        ]
+
+    }
     # These are ids of anchors serving as beacons for detection
     # DB92 = 56210
     detectable_anchors = {
-        56210:{
+        56210: {
             'name': 'GMeter Test 1'
         }
     }
@@ -85,7 +100,7 @@ class GhostHunter(object):
     # Current level - in scratch this will be the room we're in
     current_level = 0
 
-    #Is the main loop on?
+    # Is the main loop on?
     running = False
     DEBUG_MODE = False
 
@@ -178,19 +193,16 @@ class GhostHunter(object):
             result = self.telegraph_transmit()
         return result
 
-
     async def log_position(self):
         """ Get the uwb position if it can and log it"""
         while self.running is True:
             # Get uwb position
             # if it's not empty
             # have we got an xy for the room? log it
-            #are we near any points of interest? log it
+            # are we near any points of interest? log it
             logging.debug("Position logged")
             await asyncio.sleep(30)
         return True
-
-
 
     def init_serial_connections(self):
         """Establish UART connections to UWB and Micro:bit
@@ -231,18 +243,18 @@ class GhostHunter(object):
     # ********** Micro:Bit functions ****************
 
     def microbit_read(self):
-            """
-            If microbit port is open and data present, read and return
-            :return: line from microbit serial
-            """
-            if self.microbit_serial.is_open:
-                if self.microbit_serial.in_waiting > 0:
-                    line = self.microbit_serial.readline()
-                    return line
-                else:
-                    return None
+        """
+        If microbit port is open and data present, read and return
+        :return: line from microbit serial
+        """
+        if self.microbit_serial.is_open:
+            if self.microbit_serial.in_waiting > 0:
+                line = self.microbit_serial.readline()
+                return line
             else:
-                logging.warning('Trying to read microbit msg over closed uart')
+                return None
+        else:
+            logging.warning('Trying to read microbit msg over closed uart')
 
     def microbit_write(self, message='0', channel=return_channel, delay=0.1):
         """
@@ -256,9 +268,9 @@ class GhostHunter(object):
         """
 
         if self.microbit_serial.is_open:
-            msg = bytes(message+channel, 'utf-8')
+            msg = bytes(message + channel, 'utf-8')
             logging.debug("To microbit: {}".format(msg))
-            #pdb.set_trace()
+            # pdb.set_trace()
             """ 
             Added this because returning results 'too fast'
             seems to break the micro:bit. Not sure why yet.
@@ -274,7 +286,7 @@ class GhostHunter(object):
     def microbit_reset(self):
         """Send a reset command to the attached micro:bit"""
         self.microbit_write(
-            'reset'+self.OUT_SEPARATOR,
+            'reset' + self.OUT_SEPARATOR,
             self.command_channel
         )
 
@@ -284,7 +296,7 @@ class GhostHunter(object):
         """ Scan function used for both radar and ectoscope
         :return int 0-10 proximity to something
         """
-        
+
         pos = uwb.dwm_serial_get_loc(self.uwb_serial)
         proximity = 0
         if pos:
@@ -347,7 +359,6 @@ class GhostHunter(object):
                 translation = '?'
         return [self.MICROBIT_CODES['data'], translation]
 
-
     #########  UWB Functions ######################
 
     def detect_things(self, pos, device_range, level=0):
@@ -365,7 +376,7 @@ class GhostHunter(object):
         # First are any visible anchors in our detect list?
         for anchor_id in anchors.keys():
             if anchor_id in self.detectable_anchors:
-                anchor=anchors[anchor_id]
+                anchor = anchors[anchor_id]
                 # are they in range?
                 if device_range >= anchor['distance']:
                     detected_things.append(anchor)
@@ -389,8 +400,6 @@ class GhostHunter(object):
         return detected_things
 
 
-
-
 def main():
     #######     Startup            #########
 
@@ -405,7 +414,7 @@ def main():
     ####### Main command loop     #######
     hunter.running = True
     loop = asyncio.get_event_loop()
-    #with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
     loop.run_until_complete(asyncio.gather(
         hunter.main_device_loop()
     ))
@@ -418,13 +427,13 @@ def main():
     hunter.close_serial_connections()
 
 
-#uwb_serial_address = '/dev/ttyACM0'
-#uwb_serial_address = '/dev/tty.usbmodem1451'
-#uwb_serial = serial.Serial(uwb_serial_address, 115200, timeout=3)
-#uwb.dwm_reset(uwb_serial)
-#time.sleep(5)
-#print(uwb.dwm_serial_get_loc(uwb_serial))
-#uwb_serial.close()
+# uwb_serial_address = '/dev/ttyACM0'
+# uwb_serial_address = '/dev/tty.usbmodem1451'
+# uwb_serial = serial.Serial(uwb_serial_address, 115200, timeout=3)
+# uwb.dwm_reset(uwb_serial)
+# time.sleep(5)
+# print(uwb.dwm_serial_get_loc(uwb_serial))
+# uwb_serial.close()
 
 
 if __name__ == '__main__':

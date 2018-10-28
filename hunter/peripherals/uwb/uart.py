@@ -159,24 +159,28 @@ def dwm_serial_get_pos(serial_connection, message):
     :param message: api code
     :returns position dict
     """
-    response = serial_api_call(serial_connection, message)
-    uwb_locations = {}
 
-    if response != 0:
-        # make sure we're getting what we expect
-        if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
-            if response[1] != POSITION_LENGTH:
-                logging.error("Bad dwm_get_pos response. Length wrong")
+    try:
+        response = serial_api_call(serial_connection, message)
+        uwb_locations = {}
+
+        if response != 0:
+            # make sure we're getting what we expect
+            if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
+                if response[1] != POSITION_LENGTH:
+                    logging.error("Bad dwm_get_pos response. Length wrong")
+                else:
+                    uwb_locations['position'] = get_position_from_response(
+                        bytearray(response[2]))
+                if message == DWM_LOC_GET_MSG:
+                    # more to do, get the anchors as well
+                    uwb_locations['anchors'] = get_anchors_from_response(
+                        serial_connection)
             else:
-                uwb_locations['position'] = get_position_from_response(
-                    bytearray(response[2]))
-            if message == DWM_LOC_GET_MSG:
-                # more to do, get the anchors as well
-                uwb_locations['anchors'] = get_anchors_from_response(
-                    serial_connection)
-        else:
-            logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
-        return uwb_locations
+                logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
+    except KeyError as e:
+        logging.error(e)
+    return uwb_locations
 
 
 def dwm_serial_get_loc(serial_connection):
