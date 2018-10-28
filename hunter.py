@@ -13,7 +13,6 @@ from shapely.geometry import Point
 
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
-import pdb
 
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
@@ -73,23 +72,19 @@ class GhostHunter(object):
             {'id': 0,
              'name': 'Outside Door',
              'geometry': Point(-200, 1090),
-             'type': 'E'
              },
 
             {'id': 1,
              'name': 'Inside Door',
              'geometry': Point(1080, 1350),
-             'type': 'E'
              },
             {'id': 2,
              'name': 'Room 1',
              'geometry': Point(2310, 2870),
-             'type': 'E'
              },
             {'id': 3,
              'name': 'Lamp',
              'geometry': Point(2300, 6180),
-             'type': 'E'
              },
         ]
 
@@ -141,7 +136,7 @@ class GhostHunter(object):
     # Ectoscope
     ectoscope_settings = {
         # Detection range (in mm)
-        "device_range": 1000
+        "device_range": 500
     }
 
     # Spirit Signs
@@ -307,7 +302,6 @@ class GhostHunter(object):
         if pos:
             # Compare current position in a 360 circle, see if intersects
             # with any phenomena
-
             detected_things = self.detect_things(
                 pos,
                 settings['device_range'],
@@ -316,8 +310,7 @@ class GhostHunter(object):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 thing = detected_things[0]
-
-                full_proximity = (1 - thing['distance'] / settings['device_range']) * 10
+                full_proximity = (1 - thing['distance'] / range) * 10
                 if full_proximity > 0 and full_proximity < 1:
                     proximity = 1
                 else:
@@ -378,7 +371,7 @@ class GhostHunter(object):
         # get pos and anchors
         anchors = pos['anchors']
         x = pos['position']['x']
-        y = pos['position']['y']        
+        y = pos['position']['y']
 
         # First are any visible anchors in our detect list?
         for anchor_id in anchors.keys():
@@ -387,9 +380,9 @@ class GhostHunter(object):
                 # are they in range?
                 if device_range >= anchor['distance']:
                     detected_things.append(anchor)
-        
-        if pos and self.detectable_things:
-        	# todo Are we on a grid?
+
+        # todo Are we on a grid?
+        if self.uwb_pos and self.detectable_things:
 
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
