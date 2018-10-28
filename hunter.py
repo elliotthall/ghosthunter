@@ -14,6 +14,7 @@ from shapely.geometry import Point
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
 
+
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -139,7 +140,7 @@ class GhostHunter(object):
     # Ectoscope
     ectoscope_settings = {
         # Detection range (in mm)
-        "device_range": 500
+        "device_range": 2000
     }
 
     # Spirit Signs
@@ -313,7 +314,7 @@ class GhostHunter(object):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 thing = detected_things[0]
-                full_proximity = (1 - thing['distance'] / range) * 10
+                full_proximity = (1 - thing['distance'] / settings['device_range']) * 10
                 if full_proximity > 0 and full_proximity < 1:
                     proximity = 1
                 else:

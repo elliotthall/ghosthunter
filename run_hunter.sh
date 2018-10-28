@@ -16,4 +16,4 @@
 
 # ../env/ghosthunter/bin/python -m pip install -r requirements.txt
 # run main script
-sudo ../env/ghosthunter/bin/python hunter_main.py
+/home/pi/ghosthunt/env/ghosthunter/bin/python /home/pi/ghosthunt/ghosthunter/hunter.py
