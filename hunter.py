@@ -94,6 +94,9 @@ class GhostHunter(object):
     detectable_anchors = {
         56210: {
             'name': 'GMeter Test 1'
+        },
+        51744: {
+            'name': 'CA20'
         }
     }
 
