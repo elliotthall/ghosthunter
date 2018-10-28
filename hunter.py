@@ -6,6 +6,7 @@ import asyncio
 import logging
 import math
 import random
+import time
 from concurrent.futures import CancelledError
 from operator import itemgetter
 
@@ -59,7 +60,11 @@ class GhostHunter(object):
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
     # last position object received from DWM board
-    uwb_pos = None
+    # used to look for radio timeouts
+    last_pos = None
+    #UWB returns last seen, we need to stop it detecting
+    # 'ghost' (pun intended) signals from radios no longer there
+    pos_exact_matches = 0
     # tolerance (in mm) to ignore so that we don't mistake
     # fluctuation in uwb readings for hunter movement
     uwb_tolerance = 100
@@ -217,6 +222,7 @@ class GhostHunter(object):
         second_conn = utils.connect_serial(self.microbit_serial_address)
         # Send an id message, verify this is a DWM
         first_conn.write(uwb.DWM_CFG_GET_MSG)
+
         return_type = first_conn.read()
 
         # Flush for safety
@@ -294,6 +300,13 @@ class GhostHunter(object):
             self.command_channel
         )
 
+    def microbit_showstring(self, text):
+        """Send a command to the attached micro:bit to show a string"""
+        self.microbit_write(
+            'text' + self.OUT_SEPARATOR+text,
+            self.command_channel
+        )
+
     """ **************  Hunting functions *********************   """
 
     def scan(self, settings):
@@ -303,24 +316,26 @@ class GhostHunter(object):
 
         pos = uwb.dwm_serial_get_loc(self.uwb_serial)
         proximity = 0
-        if pos:
-            # Compare current position in a 360 circle, see if intersects
-            # with any phenomena
-            detected_things = self.detect_things(
-                pos,
-                settings['device_range'],
-                self.current_level
-            )
-            if len(detected_things) > 0:
-                # Something found, display proximity to nearest thing
-                thing = detected_things[0]
-                full_proximity = (1 - thing['distance'] / settings['device_range']) * 10
-                if full_proximity > 0 and full_proximity < 1:
-                    proximity = 1
-                else:
-                    proximity = math.floor(full_proximity)
-        # return not found value to microbit
+        if self.last_pos != pos:
+            if pos:
+                # Compare current position in a 360 circle, see if intersects
+                # with any phenomena
+                detected_things = self.detect_things(
+                    pos,
+                    settings['device_range'],
+                    self.current_level
+                )
+                if len(detected_things) > 0:
+                    # Something found, display proximity to nearest thing
+                    thing = detected_things[0]
+                    full_proximity = (1 - thing['distance'] / settings['device_range']) * 10
+                    if full_proximity > 0 and full_proximity < 1:
+                        proximity = 1
+                    else:
+                        proximity = math.floor(full_proximity)
+            # return not found value to microbit
         self.microbit_write(str(proximity))
+        self.last_pos = pos
         return proximity
 
     def ghost_scan(self):
@@ -363,7 +378,11 @@ class GhostHunter(object):
                 translation = '?'
         return [self.MICROBIT_CODES['data'], translation]
 
-    #########  UWB Functions ######################
+    #   UWB Functions
+
+    def uwb_reset(self):
+        """ Send a reset command to the DWM board"""
+        uwb.dwm_reset(self.uwb_serial)
 
     def detect_things(self, pos, device_range, level=0):
         """
@@ -386,7 +405,7 @@ class GhostHunter(object):
                     detected_things.append(anchor)
 
         # todo Are we on a grid?
-        if self.uwb_pos and self.detectable_things:
+        if pos and self.detectable_things:
 
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
@@ -411,9 +430,13 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
+    if hunter.uwb_serial is not None:
+        hunter.uwb_reset()
     if hunter.microbit_serial is not None:
+        hunter.microbit_showstring("R")
+        time.sleep(2)
         hunter.microbit_reset()
-    # Server?
+    
 
     ####### Main command loop     #######
     hunter.running = True
