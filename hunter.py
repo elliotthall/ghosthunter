@@ -9,7 +9,7 @@ import random
 import time
 from concurrent.futures import CancelledError
 from operator import itemgetter
-
+import pdb
 from shapely.geometry import Point
 
 import hunter.peripherals.uwb.uart as uwb
@@ -74,7 +74,8 @@ class GhostHunter(object):
     # 1 = Outside Member's Bar
     # 2 = Nook (If we use it.)
     detectable_things = {
-        0: [
+        0: [],
+        1: [
             {'id': 0,
              'name': 'Outside Door',
              'geometry': Point(-200, 1090),
@@ -103,6 +104,9 @@ class GhostHunter(object):
         },
         51744: {
             'name': 'CA20'
+        },
+        22801: {
+            'name': '5911'
         }
     }
 
@@ -313,11 +317,10 @@ class GhostHunter(object):
         """ Scan function used for both radar and ectoscope
         :return int 0-10 proximity to something
         """
-
+        #pdb.set_trace()
         pos = uwb.dwm_serial_get_loc(self.uwb_serial)
         proximity = 0
-        if self.last_pos != pos:
-            if pos:
+        if pos and self.last_pos != pos:
                 # Compare current position in a 360 circle, see if intersects
                 # with any phenomena
                 detected_things = self.detect_things(
@@ -401,6 +404,7 @@ class GhostHunter(object):
             if anchor_id in self.detectable_anchors:
                 anchor = anchors[anchor_id]
                 # are they in range?
+                logging.debug('Anchor detected {}'.format(anchor))
                 if device_range >= anchor['distance']:
                     detected_things.append(anchor)
 
@@ -430,12 +434,12 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
-    if hunter.uwb_serial is not None:
-        hunter.uwb_reset()
+    #if hunter.uwb_serial is not None:
+    #    hunter.uwb_reset()
     if hunter.microbit_serial is not None:
-        hunter.microbit_showstring("R")
+        hunter.microbit_reset()        
         time.sleep(2)
-        hunter.microbit_reset()
+        hunter.microbit_showstring("R")
     
 
     ####### Main command loop     #######
