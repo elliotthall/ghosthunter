@@ -74,7 +74,33 @@ class GhostHunter(object):
     # 1 = Outside Member's Bar
     # 2 = Nook (If we use it.)
     detectable_things = {
-        0: [],
+        0: [{'id': 0,
+             'name': 'Inside Door near stairs',
+             'geometry': Point(1498, 487),
+             },
+             {'id': 1,
+             'name': 'step 1',
+             'geometry': Point(2087, 1291),
+             },
+             {'id': 2,
+             'name': 'step 2',
+             'geometry': Point(3332, 1834),
+             },
+             {'id': 3,
+             'name': 'step 3',
+             'geometry': Point(2576, 3070),
+             },
+             {'id': 4,
+             'name': 'step 4',
+             'geometry': Point(2382, 4155),
+             },
+             {'id': 5,
+             'name': 'step 5',
+             'geometry': Point(931, 4727),
+             },
+
+
+            ],
         1: [
             {'id': 0,
              'name': 'Outside Door',
@@ -99,6 +125,10 @@ class GhostHunter(object):
     # These are ids of anchors serving as beacons for detection
     # DB92 = 56210
     detectable_anchors = {
+        33157: {
+            'name': 'Porters mess door ID 8185',
+            'initiator': 0,
+        },
         56210: {
             'name': 'GMeter Test 1'
         },
