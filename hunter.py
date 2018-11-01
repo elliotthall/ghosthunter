@@ -9,7 +9,7 @@ import random
 import time
 from concurrent.futures import CancelledError
 from operator import itemgetter
-
+import pdb
 from shapely.geometry import Point
 
 import hunter.peripherals.uwb.uart as uwb
@@ -74,7 +74,34 @@ class GhostHunter(object):
     # 1 = Outside Member's Bar
     # 2 = Nook (If we use it.)
     detectable_things = {
-        0: [
+        0: [{'id': 0,
+             'name': 'Inside Door near stairs',
+             'geometry': Point(1498, 487),
+             },
+             {'id': 1,
+             'name': 'step 1',
+             'geometry': Point(2087, 1291),
+             },
+             {'id': 2,
+             'name': 'step 2',
+             'geometry': Point(3332, 1834),
+             },
+             {'id': 3,
+             'name': 'step 3',
+             'geometry': Point(2576, 3070),
+             },
+             {'id': 4,
+             'name': 'step 4',
+             'geometry': Point(2382, 4155),
+             },
+             {'id': 5,
+             'name': 'step 5',
+             'geometry': Point(931, 4727),
+             },
+
+
+            ],
+        1: [
             {'id': 0,
              'name': 'Outside Door',
              'geometry': Point(-200, 1090),
@@ -98,11 +125,18 @@ class GhostHunter(object):
     # These are ids of anchors serving as beacons for detection
     # DB92 = 56210
     detectable_anchors = {
+        33157: {
+            'name': 'Porters mess door ID 8185',
+            'initiator': 0,
+        },
         56210: {
             'name': 'GMeter Test 1'
         },
         51744: {
             'name': 'CA20'
+        },
+        22801: {
+            'name': '5911'
         }
     }
 
@@ -313,11 +347,10 @@ class GhostHunter(object):
         """ Scan function used for both radar and ectoscope
         :return int 0-10 proximity to something
         """
-
+        #pdb.set_trace()
         pos = uwb.dwm_serial_get_loc(self.uwb_serial)
         proximity = 0
-        if self.last_pos != pos:
-            if pos:
+        if pos and self.last_pos != pos:
                 # Compare current position in a 360 circle, see if intersects
                 # with any phenomena
                 detected_things = self.detect_things(
@@ -401,6 +434,7 @@ class GhostHunter(object):
             if anchor_id in self.detectable_anchors:
                 anchor = anchors[anchor_id]
                 # are they in range?
+                logging.debug('Anchor detected {}'.format(anchor))
                 if device_range >= anchor['distance']:
                     detected_things.append(anchor)
 
@@ -430,12 +464,12 @@ def main():
 
     # Test and open serials
     hunter.init_serial_connections()
-    if hunter.uwb_serial is not None:
-        hunter.uwb_reset()
+    #if hunter.uwb_serial is not None:
+    #    hunter.uwb_reset()
     if hunter.microbit_serial is not None:
-        hunter.microbit_showstring("R")
+        hunter.microbit_reset()        
         time.sleep(2)
-        hunter.microbit_reset()
+        hunter.microbit_showstring("R")
     
 
     ####### Main command loop     #######

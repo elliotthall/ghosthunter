@@ -6,7 +6,9 @@ import serial
 uwb_serial_address = '/dev/tty.usbmodem1461'
 uwb_serial = serial.Serial(uwb_serial_address, 115200, timeout=3)
 #uwb.dwm_reset(uwb_serial)
+
 #time.sleep(5)
 pos = uwb.dwm_serial_get_loc(uwb_serial)
 print("\n\nPosition:\n{}\n\nAnchors:\n{}".format(pos['position'],pos['anchors']))
+
 uwb_serial.close()
