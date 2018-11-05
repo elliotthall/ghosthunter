@@ -3,7 +3,7 @@ Functions for communicating with the API of the Decawave DWM1001-DEV UWB board o
 
 """
 import logging
-
+import time
 import bitstring
 
 UWB_SERIAL_BAUDRATE = 115200
@@ -134,6 +134,7 @@ def serial_api_call(serial_connection, message, call_type='get'):
     # First byte is return code
     # then how long (in bytes) response is
     # and error code. (should be 0)
+    time.sleep(0.1)
     (return_byte, response_length, error_code) = serial_connection.read(3)
     # Check the Error code
     if int(error_code) == 0:
@@ -149,8 +150,9 @@ def serial_api_call(serial_connection, message, call_type='get'):
     else:
         logging.error('DWM position call error: {}'.format(
             DWM_ERROR_CODES[int(error_code)]))
-        serial_connection.close()
-        serial_connection.open()
+        time.sleep(2)
+        #serial_connection.close()
+        #serial_connection.open()
         return error_code
 
 

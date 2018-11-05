@@ -334,8 +334,10 @@ class GhostHunter(object):
 
     def close_serial_connections(self):
         if self.uwb_serial is not None:
+            self.uwb_serial.flush()
             self.uwb_serial.close()
         if self.microbit_serial is not None:
+            self.microbit_serial.flush()
             self.microbit_serial.close()
 
     # ********** Micro:Bit functions ****************
@@ -555,13 +557,15 @@ def main():
     except KeyboardInterrupt:
         print('Interrupt called')
         hunter.running = False
+    finally:
+        # close serial
+        hunter.close_serial_connections()
 
     #####     finish      #############
 
     # close logs
 
-    # close serial
-    hunter.close_serial_connections()
+
 
 
 if __name__ == '__main__':
