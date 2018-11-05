@@ -75,7 +75,7 @@ class GhostHunter(object):
     # Room ids: 0 = Porter's MEss
     # 1 = downstairs fire escape
     # 2 = Outside Member's Bar
-    
+    # 3 = LAB test
     detectable_things = {
         0: [{'id': 0,
              'name': 'Inside Door near stairs',
@@ -145,6 +145,16 @@ class GhostHunter(object):
              # 'geometry': Point(674, 962),
              #},
 
+        ],
+        3:[
+            {'id': 1,
+             'name': 'step 1',
+             'geometry': Point(1150, 407),
+             },
+            {'id': 2,
+             'name': 'step 2',
+             'geometry': Point(3267, 1735),
+             },
         ]
 
     }
@@ -156,6 +166,10 @@ class GhostHunter(object):
         49591: {
             'name': 'Members bar above cable port',
             'room': 2,
+        },
+        20625: {
+            'name': 'Lab',
+            'room': 3,
         },
 
     }
