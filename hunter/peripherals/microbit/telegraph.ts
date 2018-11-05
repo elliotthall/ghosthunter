@@ -1,4 +1,9 @@
 let msg = ""
+input.onGesture(Gesture.Shake, function () {
+    basic.clearScreen()
+    basic.showString(ghosthunter.transmit(msg))
+    msg = ""
+})
 basic.showLeds(`
     # . # . #
     . # # # .
@@ -6,22 +11,13 @@ basic.showLeds(`
     . . # . .
     . . # . .
     `)
+msg = ""
 basic.forever(function () {
     if (input.buttonIsPressed(Button.A)) {
-        basic.clearScreen()
-        while (true) {
-            if (input.buttonIsPressed(Button.AB)) {
-                basic.showString(ghosthunter.transmit(msg))
-                msg = ""
-                break;
-            } else if (input.buttonIsPressed(Button.A)) {
-                msg = "" + msg + "."
-                basic.showString(msg)
-            }
-            if (input.buttonIsPressed(Button.B)) {
-                msg = "" + msg + "-"
-                basic.showString(msg)
-            }
-        }
+        msg = "" + msg + "."
+        basic.showString(msg)
+    } else if (input.buttonIsPressed(Button.B)) {
+        msg = "" + msg + "-"
+        basic.showString(msg)
     }
 })

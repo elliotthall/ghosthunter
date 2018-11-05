@@ -59,7 +59,9 @@ class GhostHunter(object):
 
     uwb_serial_address = '/dev/ttyACM0'
     uwb_serial = None
-    # last position object received from DWM board
+    # The position from the last reading
+    current_pos = None
+    # previous position object received from DWM board
     # used to look for radio timeouts
     last_pos = None
     #UWB returns last seen, we need to stop it detecting
@@ -196,11 +198,8 @@ class GhostHunter(object):
         """ Where the magic happens."""
         try:
             logging.debug("Starting main loop")
-            while True:
+            while self.running:
                 try:
-                    # get position
-
-                    # message from server
 
                     # message from microbit
                     microbit_message = self.microbit_read()
@@ -348,7 +347,7 @@ class GhostHunter(object):
         :return int 0-10 proximity to something
         """
         #pdb.set_trace()
-        pos = uwb.dwm_serial_get_loc(self.uwb_serial)
+        pos = self.current_pos
         proximity = 0
         if pos and self.last_pos != pos:
                 # Compare current position in a 360 circle, see if intersects
@@ -413,6 +412,15 @@ class GhostHunter(object):
 
     #   UWB Functions
 
+    async def get_position(self):
+        """ Query the uwb board for a position every second"""
+        logging.debug("Starting uwb position loop")
+        while self.running:
+            self.current_pos = uwb.dwm_serial_get_loc(self.uwb_serial)
+            await asyncio.sleep(1)
+        logging.debug("Stopped uwb position loop")
+        return True
+
     def uwb_reset(self):
         """ Send a reset command to the DWM board"""
         uwb.dwm_reset(self.uwb_serial)
@@ -461,6 +469,8 @@ def main():
     #######     Startup            #########
 
     hunter = GhostHunter()
+    #hunter.uwb_serial_address = '/dev/tty.usbmodem1451'
+    #hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
 
     # Test and open serials
     hunter.init_serial_connections()
@@ -476,9 +486,14 @@ def main():
     hunter.running = True
     loop = asyncio.get_event_loop()
     # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-    loop.run_until_complete(asyncio.gather(
-        hunter.main_device_loop()
-    ))
+    try:
+        loop.run_until_complete(asyncio.gather(
+            hunter.main_device_loop(),
+            hunter.get_position(),
+        ))
+    except KeyboardInterrupt:
+        print('Interrupt called')
+        hunter.running = False
 
     #####     finish      #############
 
@@ -486,15 +501,6 @@ def main():
 
     # close serial
     hunter.close_serial_connections()
-
-
-# uwb_serial_address = '/dev/ttyACM0'
-# uwb_serial_address = '/dev/tty.usbmodem1451'
-# uwb_serial = serial.Serial(uwb_serial_address, 115200, timeout=3)
-# uwb.dwm_reset(uwb_serial)
-# time.sleep(5)
-# print(uwb.dwm_serial_get_loc(uwb_serial))
-# uwb_serial.close()
 
 
 if __name__ == '__main__':
