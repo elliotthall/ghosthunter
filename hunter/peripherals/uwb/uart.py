@@ -149,6 +149,8 @@ def serial_api_call(serial_connection, message, call_type='get'):
     else:
         logging.error('DWM position call error: {}'.format(
             DWM_ERROR_CODES[int(error_code)]))
+        serial_connection.close()
+        serial_connection.open()
         return error_code
 
 
