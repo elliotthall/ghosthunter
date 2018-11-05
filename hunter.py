@@ -73,8 +73,9 @@ class GhostHunter(object):
     # These are shapely geometries of things the device can detect
     # dict of lists split by level/room, updated by server as hunt develops
     # Room ids: 0 = Porter's MEss
-    # 1 = Outside Member's Bar
-    # 2 = Nook (If we use it.)
+    # 1 = downstairs fire escape
+    # 2 = Outside Member's Bar
+    
     detectable_things = {
         0: [{'id': 0,
              'name': 'Inside Door near stairs',
@@ -102,7 +103,7 @@ class GhostHunter(object):
              },
 
 
-            ],
+            ],            
         1: [
             {'id': 0,
              'name': 'Outside Door',
@@ -121,7 +122,41 @@ class GhostHunter(object):
              'name': 'Lamp',
              'geometry': Point(2300, 6180),
              },
+        ],
+        2: [
+            {'id': 1,
+             'name': 'step 1',
+             'geometry': Point(537, 3741),
+            },
+            #{'id': 2,
+            # 'name': 'step 2',
+            # 'geometry': Point(997, 2857),
+            #},
+            {'id': 3,
+              'name': 'step 3',
+              'geometry': Point(1107, 2022),
+             },
+             {'id': 4,
+              'name': 'step 4',
+              'geometry': Point(744, 1829),
+             },
+             #{'id': 5,
+             # 'name': 'step 5',
+             # 'geometry': Point(674, 962),
+             #},
+
         ]
+
+    }
+    initiators = {
+        33157: {
+            'name': 'Porters mess door ID 8185',
+            'room': 0,
+        },
+        49591: {
+            'name': 'Members bar above cable port',
+            'room': 2,
+        },
 
     }
     # These are ids of anchors serving as beacons for detection
@@ -130,6 +165,10 @@ class GhostHunter(object):
         33157: {
             'name': 'Porters mess door ID 8185',
             'initiator': 0,
+        },
+        49591: {
+            'name': 'Members bar above cable port',
+            'room': 2,
         },
         56210: {
             'name': 'GMeter Test 1'
@@ -175,13 +214,15 @@ class GhostHunter(object):
     # Ghost Radar
     radar_settings = {
         # Detection range (in mm)
+        'device': 'G',
         "device_range": 5000,
     }
 
     # Ectoscope
     ectoscope_settings = {
         # Detection range (in mm)
-        "device_range": 2000
+        'device': 'E',
+        "device_range": 1000,
     }
 
     # Spirit Signs
@@ -355,7 +396,7 @@ class GhostHunter(object):
                 detected_things = self.detect_things(
                     pos,
                     settings['device_range'],
-                    self.current_level
+                    settings['device'],
                 )
                 if len(detected_things) > 0:
                     # Something found, display proximity to nearest thing
@@ -425,7 +466,7 @@ class GhostHunter(object):
         """ Send a reset command to the DWM board"""
         uwb.dwm_reset(self.uwb_serial)
 
-    def detect_things(self, pos, device_range, level=0):
+    def detect_things(self, pos, device_range, device):
         """
         Use shapely to find 'detectable' objects
         :param level: to separate storeys of a building, or rooms
@@ -436,24 +477,30 @@ class GhostHunter(object):
         anchors = pos['anchors']
         x = pos['position']['x']
         y = pos['position']['y']
+        room = -1
 
         # First are any visible anchors in our detect list?
         for anchor_id in anchors.keys():
-            if anchor_id in self.detectable_anchors:
-                anchor = anchors[anchor_id]
-                # are they in range?
-                logging.debug('Anchor detected {}'.format(anchor))
-                if device_range >= anchor['distance']:
-                    detected_things.append(anchor)
+            if anchor_id in self.initiators:
+                initiator = self.initiators[anchor_id]
+                room = initiator['room']
+            if device == 'G':
+                # G Meter
+                if anchor_id in self.detectable_anchors:
+                    anchor = anchors[anchor_id]
+                    # are they in range?
+                    logging.debug('Anchor detected {}'.format(anchor))
+                    if device_range >= anchor['distance']:
+                        detected_things.append(anchor)
 
         # todo Are we on a grid?
-        if pos and self.detectable_things:
+        if pos and self.detectable_things and room >= 0:
 
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
                 float(x), float(y)).buffer(device_range)
             # Get all detectable features for this level
-            for thing in self.detectable_things[level]:
+            for thing in self.detectable_things[room]:
                 if detection_zone.intersects(thing['geometry']):
                     detected_thing = thing
                     # distance between point of detection and player
