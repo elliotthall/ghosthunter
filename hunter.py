@@ -10,12 +10,14 @@ import time
 from concurrent.futures import CancelledError
 from operator import itemgetter
 import pdb
+from uuid import getnode as get_mac
 from shapely.geometry import Point
 
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
-
-logging.basicConfig(
+# using MAC address as 48bit integer to keep logs unique across devices
+mac = get_mac()
+logging.basicConfig(filename='SEEK-{}.log'.format(mac),
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -310,7 +312,7 @@ class GhostHunter(object):
         first_conn.write(uwb.DWM_CFG_GET_MSG)
 
         return_type = first_conn.read()
-
+        print("\n{}".format(return_type))
         # Flush for safety
         first_conn.flush()
         first_conn.reset_input_buffer()
@@ -422,7 +424,7 @@ class GhostHunter(object):
                     proximity = 1
                 else:
                     proximity = math.floor(full_proximity)
-        # return not found value to microbit
+        # return not found value to microbit                
         self.microbit_write(str(proximity))
         self.last_pos = pos
         return proximity
@@ -538,20 +540,30 @@ def main():
     # Test and open serials
     hunter.init_serial_connections()
     if hunter.uwb_serial is not None:
-        response = uwb.serial_api_call(hunter.uwb_serial, uwb.DWM_LOC_GET_MSG)
-        pdb.set_trace()
-        if (response != 0 and (response[0] == uwb.DWM_POSITION_RETURN_TYPE or
-                response[
-                    0] == uwb.DWM_LOC_GET_RETURN_TYPE)):
+        hunter.uwb_serial.write(uwb.DWM_LOC_GET_MSG)
+        time.sleep(0.3)
+        (return_byte, response_length, error_code) = hunter.uwb_serial.read(3)
+        
+        if (error_code == 0):
             logging.debug('UWB responding')
+            hunter.uwb_serial.flush()
         else:
-            
-            error_code = response[0]
-            logging.warning('UWB NOT responding!')
-            # uh oh UWB isn't responding
-            startup_result = "U"
+            #pdb.set_trace()    
+            if error_code < 4:
+                logging.warning('UWB NOT responding! error code {}'.format(uwb.DWM_ERROR_CODES[error_code]))
+                # uh oh UWB isn't responding
+                startup_result = "U"
+            elif error_code == 4:
+                logging.warning("UWB busy, waiting to retry...")
+                time.sleep(3)
+                hunter.uwb_serial.write(uwb.DWM_LOC_GET_MSG)
+                time.sleep(0.3)
+                (return_byte, response_length, error_code) = hunter.uwb_serial.read(3)
+                if error_code !=0:
+                    logging.warning('UWB NOT responding! error code {}'.format(uwb.DWM_ERROR_CODES[error_code]))
 
-    #    hunter.uwb_reset()
+
+    #    
     if hunter.microbit_serial is not None:
         hunter.microbit_reset()
         time.sleep(2)
@@ -571,6 +583,9 @@ def main():
         hunter.running = False
     finally:
         # close serial
+        hunter.uwb_reset()
+        hunter.microbit_reset()
+        time.sleep(2)
         hunter.close_serial_connections()
 
     #####     finish      #############
