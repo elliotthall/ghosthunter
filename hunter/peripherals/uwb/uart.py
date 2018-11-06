@@ -153,7 +153,7 @@ def serial_api_call(serial_connection, message, call_type='get'):
         time.sleep(2)
         #serial_connection.close()
         #serial_connection.open()
-        return error_code
+        return return_byte, response_length, error_code
 
 
 def dwm_serial_get_pos(serial_connection, message):
@@ -168,7 +168,7 @@ def dwm_serial_get_pos(serial_connection, message):
     try:
         response = serial_api_call(serial_connection, message)
 
-        if response != 0:
+        if response[2] == 0:
             # make sure we're getting what we expect
             if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
                 if response[1] != POSITION_LENGTH:
