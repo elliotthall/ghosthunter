@@ -15,7 +15,6 @@ from shapely.geometry import Point
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
 
-
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -64,7 +63,7 @@ class GhostHunter(object):
     # previous position object received from DWM board
     # used to look for radio timeouts
     last_pos = None
-    #UWB returns last seen, we need to stop it detecting
+    # UWB returns last seen, we need to stop it detecting
     # 'ghost' (pun intended) signals from radios no longer there
     pos_exact_matches = 0
     # tolerance (in mm) to ignore so that we don't mistake
@@ -81,29 +80,28 @@ class GhostHunter(object):
              'name': 'Inside Door near stairs',
              'geometry': Point(1498, 487),
              },
-             {'id': 1,
+            {'id': 1,
              'name': 'step 1',
              'geometry': Point(2087, 1291),
              },
-             {'id': 2,
+            {'id': 2,
              'name': 'step 2',
              'geometry': Point(3332, 1834),
              },
-             {'id': 3,
+            {'id': 3,
              'name': 'step 3',
              'geometry': Point(2576, 3070),
              },
-             {'id': 4,
+            {'id': 4,
              'name': 'step 4',
              'geometry': Point(2382, 4155),
              },
-             {'id': 5,
+            {'id': 5,
              'name': 'step 5',
              'geometry': Point(931, 4727),
              },
 
-
-            ],            
+            ],
         1: [
             {'id': 0,
              'name': 'Outside Door',
@@ -127,26 +125,26 @@ class GhostHunter(object):
             {'id': 1,
              'name': 'step 1',
              'geometry': Point(537, 3741),
-            },
-            #{'id': 2,
+             },
+            # {'id': 2,
             # 'name': 'step 2',
             # 'geometry': Point(997, 2857),
-            #},
+            # },
             {'id': 3,
-              'name': 'step 3',
-              'geometry': Point(1107, 2022),
+             'name': 'step 3',
+             'geometry': Point(1107, 2022),
              },
-             {'id': 4,
-              'name': 'step 4',
-              'geometry': Point(744, 1829),
+            {'id': 4,
+             'name': 'step 4',
+             'geometry': Point(744, 1829),
              },
-             #{'id': 5,
-             # 'name': 'step 5',
-             # 'geometry': Point(674, 962),
-             #},
+            # {'id': 5,
+            # 'name': 'step 5',
+            # 'geometry': Point(674, 962),
+            # },
 
         ],
-        3:[
+        3: [
             {'id': 1,
              'name': 'step 1',
              'geometry': Point(1150, 407),
@@ -314,10 +312,11 @@ class GhostHunter(object):
         return_type = first_conn.read()
 
         # Flush for safety
+        first_conn.flush()
         first_conn.reset_input_buffer()
         first_conn.reset_output_buffer()
-        second_conn.reset_output_buffer()
-        second_conn.reset_input_buffer()
+        # second_conn.reset_output_buffer()
+        # second_conn.reset_input_buffer()
         if (int.from_bytes(return_type, byteorder='little')
                 == uwb.DWM_RETURN_BYTE):
             # Yes, assign to uwb
@@ -393,7 +392,7 @@ class GhostHunter(object):
     def microbit_showstring(self, text):
         """Send a command to the attached micro:bit to show a string"""
         self.microbit_write(
-            'text' + self.OUT_SEPARATOR+text,
+            'text' + self.OUT_SEPARATOR + text,
             self.command_channel
         )
 
@@ -403,26 +402,27 @@ class GhostHunter(object):
         """ Scan function used for both radar and ectoscope
         :return int 0-10 proximity to something
         """
-        #pdb.set_trace()
+        # pdb.set_trace()
         pos = self.current_pos
         proximity = 0
         if pos and self.last_pos != pos:
-                # Compare current position in a 360 circle, see if intersects
-                # with any phenomena
-                detected_things = self.detect_things(
-                    pos,
-                    settings['device_range'],
-                    settings['device'],
-                )
-                if len(detected_things) > 0:
-                    # Something found, display proximity to nearest thing
-                    thing = detected_things[0]
-                    full_proximity = (1 - thing['distance'] / settings['device_range']) * 10
-                    if full_proximity > 0 and full_proximity < 1:
-                        proximity = 1
-                    else:
-                        proximity = math.floor(full_proximity)
-            # return not found value to microbit
+            # Compare current position in a 360 circle, see if intersects
+            # with any phenomena
+            detected_things = self.detect_things(
+                pos,
+                settings['device_range'],
+                settings['device'],
+            )
+            if len(detected_things) > 0:
+                # Something found, display proximity to nearest thing
+                thing = detected_things[0]
+                full_proximity = (1 - thing['distance'] / settings[
+                    'device_range']) * 10
+                if full_proximity > 0 and full_proximity < 1:
+                    proximity = 1
+                else:
+                    proximity = math.floor(full_proximity)
+        # return not found value to microbit
         self.microbit_write(str(proximity))
         self.last_pos = pos
         return proximity
@@ -532,18 +532,29 @@ def main():
     #######     Startup            #########
 
     hunter = GhostHunter()
-    #hunter.uwb_serial_address = '/dev/tty.usbmodem1451'
-    #hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
-
+    # hunter.uwb_serial_address = '/dev/tty.usbmodem1451'
+    # hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
+    startup_result = "R"
     # Test and open serials
     hunter.init_serial_connections()
-    #if hunter.uwb_serial is not None:
+    if hunter.uwb_serial is not None:
+        response = uwb.serial_api_call(hunter.uwb_serial, uwb.DWM_LOC_GET_MSG)
+        if (response != 0 and (response[0] == uwb.DWM_POSITION_RETURN_TYPE or
+                response[
+                    0] == uwb.DWM_LOC_GET_RETURN_TYPE)):
+            logging.debug('UWB responding')
+        else:
+            pdb.set_trace()
+            error_code = response[0]
+            logging.warning('UWB NOT responding!')
+            # uh oh UWB isn't responding
+            startup_result = "U"
+
     #    hunter.uwb_reset()
     if hunter.microbit_serial is not None:
-        hunter.microbit_reset()        
+        hunter.microbit_reset()
         time.sleep(2)
-        hunter.microbit_showstring("R")
-    
+        hunter.microbit_showstring(startup_result)
 
     ####### Main command loop     #######
     hunter.running = True
@@ -564,8 +575,6 @@ def main():
     #####     finish      #############
 
     # close logs
-
-
 
 
 if __name__ == '__main__':
