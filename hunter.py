@@ -539,12 +539,13 @@ def main():
     hunter.init_serial_connections()
     if hunter.uwb_serial is not None:
         response = uwb.serial_api_call(hunter.uwb_serial, uwb.DWM_LOC_GET_MSG)
+        pdb.set_trace()
         if (response != 0 and (response[0] == uwb.DWM_POSITION_RETURN_TYPE or
                 response[
                     0] == uwb.DWM_LOC_GET_RETURN_TYPE)):
             logging.debug('UWB responding')
         else:
-            pdb.set_trace()
+            
             error_code = response[0]
             logging.warning('UWB NOT responding!')
             # uh oh UWB isn't responding
