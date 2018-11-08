@@ -187,6 +187,9 @@ class GhostHunter(object):
         56210: {
             'name': 'GMeter Test 1'
         },
+        20625: {
+            'name': 'GMeter Test 1'
+        },
         51744: {
             'name': 'CA20'
         },
