@@ -135,7 +135,7 @@ def serial_api_call(serial_connection, message, call_type='get'):
     # then how long (in bytes) response is
     # and error code. (should be 0)
     time.sleep(0.1)
-    (return_byte, response_length, error_code) = serial_connection.read(3)
+    (return_byte, response_length, error_code) = serial_connection.read(3)    
     # Check the Error code
     if int(error_code) == 0:
         # All is well, return the rest of the response
