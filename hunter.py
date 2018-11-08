@@ -301,8 +301,7 @@ class GhostHunter(object):
                 self.current_pos != self.last_pos
                 ):
                 # if it's not empty
-                # have we got an xy for the room? log it
-                # are we near any points of interest? log it
+                # have we got an xy for the room? log it                
                 logging.info("Position {}".format(
                     self.current_pos['position'])
                 )
