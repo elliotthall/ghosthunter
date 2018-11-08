@@ -297,12 +297,16 @@ class GhostHunter(object):
     async def log_position(self):
         """ Get the uwb position if it can and log it"""
         while self.running is True:
-            # Get uwb position
-            # if it's not empty
-            # have we got an xy for the room? log it
-            # are we near any points of interest? log it
-            logging.debug("Position logged")
-            await asyncio.sleep(30)
+            if (self.current_pos and 'position' in self.current_pos and
+                self.current_pos != self.last_pos
+                ):
+                # if it's not empty
+                # have we got an xy for the room? log it
+                # are we near any points of interest? log it
+                logging.info("Position {}".format(
+                    self.current_pos['position'])
+                )
+            await asyncio.sleep(10)
         return True
 
     def init_serial_connections(self):
@@ -421,6 +425,7 @@ class GhostHunter(object):
             if len(detected_things) > 0:
                 # Something found, display proximity to nearest thing
                 thing = detected_things[0]
+                logging.info('Thing found: {}'.format(thing))
                 full_proximity = (1 - thing['distance'] / settings[
                     'device_range']) * 10
                 if full_proximity > 0 and full_proximity < 1:
@@ -555,6 +560,7 @@ def main():
     try:
         loop.run_until_complete(asyncio.gather(
             hunter.main_device_loop(),
+            hunter.log_position(),
             hunter.get_position(),
         ))
     except KeyboardInterrupt:
