@@ -167,10 +167,8 @@ def dwm_serial_get_pos(serial_connection, message):
     uwb_locations = {}
     try:
         response = serial_api_call(serial_connection, message)
-
-        if response[2] == 0:
-            # make sure we're getting what we expect
-            if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
+        # make sure we're getting what we expect
+        if response[0] == DWM_POSITION_RETURN_TYPE or response[0] == DWM_LOC_GET_RETURN_TYPE:
                 if response[1] != POSITION_LENGTH:
                     logging.error("Bad dwm_get_pos response. Length wrong")
                 else:
@@ -180,7 +178,7 @@ def dwm_serial_get_pos(serial_connection, message):
                     # more to do, get the anchors as well
                     uwb_locations['anchors'] = get_anchors_from_response(
                         serial_connection)
-            else:
+        else:
                 logging.error("Bad dwm_get_pos return type: {}".format(response[0]))
     except KeyError as e:
         logging.error(e)

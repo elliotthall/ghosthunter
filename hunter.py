@@ -17,7 +17,7 @@ import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
 # using MAC address as 48bit integer to keep logs unique across devices
 mac = get_mac()
-logging.basicConfig(filename='SEEK-{}.log'.format(mac),
+logging.basicConfig(filename='/home/pi/ghosthunt/ghosthunter/SEEK-{}.log'.format(mac),
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
