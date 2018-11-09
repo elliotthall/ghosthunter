@@ -1,5 +1,7 @@
+let scanning = false
 let reading = 0
 reading = 0
+scanning = false
 ghosthunter.startUp()
 images.createImage(`
     # # # # #
@@ -10,12 +12,13 @@ images.createImage(`
     `).showImage(0)
 basic.forever(function () {
     if (input.buttonIsPressed(Button.A)) {
+        scanning = true
         basic.clearScreen()
-        while (true) {
-            reading = ghosthunter.ectoScan()
+        while (scanning == true) {
             if (input.buttonIsPressed(Button.B)) {
-                break;
+                scanning = false
             }
+            reading = ghosthunter.ectoScan()
             if (reading == 0) {
                 images.createImage(`
                     . . . . .
