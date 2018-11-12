@@ -544,7 +544,7 @@ def main():
     hunter = GhostHunter()
     # hunter.uwb_serial_address = '/dev/tty.usbmodem1451'
     # hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
-    startup_result = "R"
+    startup_result = "1-1R"
     # Test and open serials
     hunter.init_serial_connections()    
       
