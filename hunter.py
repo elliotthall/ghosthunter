@@ -195,11 +195,11 @@ class GhostHunter(object):
             'room': 2,
         },
         56210: {
-            'name': 'GMeter Test / nook mirror'
+            'name': 'GMeter Test'
         },
-        # 20625: {
-        #     'name': 'GMeter Test 1'
-        # },
+        20625: {
+            'name': 'GMeter Test 1 REAL nook'
+        },
         # 51744: {
         #     'name': 'CA20'
         # },
@@ -492,7 +492,7 @@ class GhostHunter(object):
         logging.debug("Starting uwb position loop")
         while self.running:
             self.current_pos = uwb.dwm_serial_get_loc(self.uwb_serial)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
         logging.debug("Stopped uwb position loop")
         return True
 
@@ -553,7 +553,7 @@ def main():
     hunter = GhostHunter()
     # hunter.uwb_serial_address = '/dev/tty.usbmodem1451'
     # hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
-    startup_result = "1-1R"
+    startup_result = "1-2R"
     # Test and open serials
     hunter.init_serial_connections()    
       
