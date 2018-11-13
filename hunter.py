@@ -197,12 +197,12 @@ class GhostHunter(object):
         56210: {
             'name': 'GMeter Test / nook mirror'
         },
-        20625: {
-            'name': 'GMeter Test 1'
-        },
-        51744: {
-            'name': 'CA20'
-        },
+        # 20625: {
+        #     'name': 'GMeter Test 1'
+        # },
+        # 51744: {
+        #     'name': 'CA20'
+        # },
         36657: {
             'name': '8F31 downstairs above door'
         }
@@ -527,8 +527,9 @@ class GhostHunter(object):
                     if device_range >= anchor['distance']:
                         detected_things.append(anchor)
 
-        # todo Are we on a grid?
-        if pos and self.detectable_things and room >= 0:
+        # todo filter points so gmeter can do anchor and points
+        # Are we on a grid?
+        if pos and self.detectable_things and device != 'G' and room >= 0:
 
             # Make a point from current coordinates, buffer it
             detection_zone = Point(
