@@ -108,21 +108,21 @@ class GhostHunter(object):
             ],
         1: [
             {'id': 0,
-             'name': 'Outside Door',
-             'geometry': Point(-200, 1090),
+             'name': 'exit sign',
+             'geometry': Point(500, 800),
              },
 
             {'id': 1,
-             'name': 'Inside Door',
-             'geometry': Point(1080, 1350),
+             'name': 'stair 1',
+             'geometry': Point(1000, 2500),
              },
             {'id': 2,
-             'name': 'Room 1',
-             'geometry': Point(2310, 2870),
+             'name': 'stair bottom',
+             'geometry': Point(650, 4300),
              },
             {'id': 3,
-             'name': 'Lamp',
-             'geometry': Point(2300, 6180),
+             'name': 'Laundry room',
+             'geometry': Point(575, 5400),
              },
         ],
         2: [
@@ -173,6 +173,14 @@ class GhostHunter(object):
             'name': 'Lab',
             'room': 3,
         },
+        33977:{
+            'name': 'Fire escape sign downstairs',
+            'room': 1,
+        },
+        36657: {
+            'name': '8F31 above door',
+            'room': 1,
+        }
 
     }
     # These are ids of anchors serving as beacons for detection
@@ -195,8 +203,8 @@ class GhostHunter(object):
         51744: {
             'name': 'CA20'
         },
-        22801: {
-            'name': '5911'
+        36657: {
+            'name': '8F31 downstairs above door'
         }
     }
 
