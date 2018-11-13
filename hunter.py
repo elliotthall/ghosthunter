@@ -187,7 +187,7 @@ class GhostHunter(object):
             'room': 2,
         },
         56210: {
-            'name': 'GMeter Test 1'
+            'name': 'GMeter Test / nook mirror'
         },
         20625: {
             'name': 'GMeter Test 1'
@@ -484,7 +484,7 @@ class GhostHunter(object):
         logging.debug("Starting uwb position loop")
         while self.running:
             self.current_pos = uwb.dwm_serial_get_loc(self.uwb_serial)
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
         logging.debug("Stopped uwb position loop")
         return True
 
