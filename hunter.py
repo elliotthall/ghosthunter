@@ -255,7 +255,7 @@ class GhostHunter(object):
     ectoscope_settings = {
         # Detection range (in mm)
         'device': 'E',
-        "device_range": 1000,
+        "device_range": 1500,
     }
 
     # Spirit Signs
