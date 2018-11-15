@@ -203,8 +203,14 @@ class GhostHunter(object):
         # 51744: {
         #     'name': 'CA20'
         # },
-        36657: {
-            'name': '8F31 downstairs above door'
+        # 36657: {
+        #     'name': '8F31 downstairs above door'
+        # }
+        # 49289: {
+        #     'name':'CO89'
+        # }
+        7444: {
+            'name': '1D14 piano'
         }
     }
 
