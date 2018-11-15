@@ -1,5 +1,13 @@
 let lean = ""
+let msg = ""
+input.onGesture(Gesture.Shake, function () {
+    basic.showString(msg)
+    basic.pause(2000)
+    basic.clearScreen()
+})
+msg = ""
 lean = ""
+ghosthunter.startUp()
 basic.showIcon(IconNames.StickFigure)
 basic.forever(function () {
     if (input.buttonIsPressed(Button.A)) {
@@ -24,6 +32,7 @@ basic.forever(function () {
             }
             basic.pause(300)
         }
-        basic.showString(ghosthunter.decode())
+        msg = ghosthunter.decode()
+        basic.showString(msg)
     }
 })

@@ -307,7 +307,9 @@ class GhostHunter(object):
         """ Get the uwb position if it can and log it"""
         while self.running is True:
             if (self.current_pos and 'position' in self.current_pos and
-                self.current_pos != self.last_pos
+                self.current_pos != self.last_pos and
+                    (self.current_pos['position']['x'] != 0 or
+                     self.current_pos['position']['y'] != 0)
                 ):
                 # if it's not empty
                 # have we got an xy for the room? log it                
