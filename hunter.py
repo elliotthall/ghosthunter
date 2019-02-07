@@ -1,4 +1,5 @@
 """
+Hunter 1.0
 Simplified version of script for scratch performance.  No OOP, just what we
 need.
 """
@@ -9,16 +10,18 @@ import random
 import time
 from concurrent.futures import CancelledError
 from operator import itemgetter
-import pdb
 from uuid import getnode as get_mac
+
 from shapely.geometry import Point
 
 import hunter.peripherals.uwb.uart as uwb
 import hunter.utils as utils
+
 # using MAC address as 48bit integer to keep logs unique across devices
 mac = get_mac()
 
-logging.basicConfig(filename='/home/pi/ghosthunt/ghosthunter/SEEK-{}.log'.format(mac),
+logging.basicConfig(
+    filename='/home/pi/ghosthunt/ghosthunter/SEEK-{}.log'.format(mac),
     level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s')
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -105,7 +108,7 @@ class GhostHunter(object):
             #  'geometry': Point(931, 4727),
             #  },
 
-            ],
+        ],
         1: [
             {'id': 0,
              'name': 'exit sign',
@@ -131,9 +134,9 @@ class GhostHunter(object):
              'geometry': Point(1439, 3603),
              },
             {'id': 2,
-            'name': 'step 2',
-            'geometry': Point(500, 1793),
-            },
+             'name': 'step 2',
+             'geometry': Point(500, 1793),
+             },
             {'id': 3,
              'name': 'step 3 optional',
              'geometry': Point(1213, 2109),
@@ -173,7 +176,7 @@ class GhostHunter(object):
             'name': 'Lab',
             'room': 3,
         },
-        33977:{
+        33977: {
             'name': 'Fire escape sign downstairs',
             'room': 1,
         },
@@ -313,10 +316,10 @@ class GhostHunter(object):
         """ Get the uwb position if it can and log it"""
         while self.running is True:
             if (self.current_pos and 'position' in self.current_pos and
-                self.current_pos != self.last_pos and
+                    self.current_pos != self.last_pos and
                     (self.current_pos['position']['x'] != 0 or
                      self.current_pos['position']['y'] != 0)
-                ):
+            ):
                 # if it's not empty
                 # have we got an xy for the room? log it                
                 logging.info("Position {}".format(
@@ -563,8 +566,8 @@ def main():
     # hunter.microbit_serial_address = '/dev/tty.usbmodem1442'
     startup_result = "M"
     # Test and open serials
-    hunter.init_serial_connections()    
-      
+    hunter.init_serial_connections()
+
     if hunter.microbit_serial is not None:
         hunter.microbit_reset()
         time.sleep(2)
