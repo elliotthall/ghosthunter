@@ -3,7 +3,7 @@ import time
 import serial
 
 #uwb_serial_address = '/dev/ttyACM0'
-uwb_serial_address = '/dev/tty.usbmodem14431'
+uwb_serial_address = '/dev/tty.usbmodem0007600510961'
 uwb_serial = serial.Serial(uwb_serial_address, 115200, timeout=3)
 #uwb.dwm_reset(uwb_serial)
 x = 0

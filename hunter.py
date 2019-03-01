@@ -83,84 +83,10 @@ class GhostHunter(object):
     # 3 = LAB test
     detectable_things = {
         0: [
-            # {'id': 0,
-            #  'name': 'Inside Door near stairs',
-            #  'geometry': Point(1498, 487),
-            #  },
-            {'id': 1,
-             'name': 'step 1 c room',
-             'geometry': Point(1786, 2500),
-             },
-            {'id': 2,
-             'name': 'step 2',
-             'geometry': Point(2000, 3800),
-             },
-            {'id': 3,
-             'name': 'step 3 stone square',
-             'geometry': Point(2550, 5200),
-             },
-            # {'id': 4,
-            #  'name': 'step 4',
-            #  'geometry': Point(2382, 4155),
-            #  },
-            # {'id': 5,
-            #  'name': 'step 5',
-            #  'geometry': Point(931, 4727),
-            #  },
+
 
         ],
-        1: [
-            {'id': 0,
-             'name': 'exit sign',
-             'geometry': Point(500, 800),
-             },
 
-            {'id': 1,
-             'name': 'stair 1',
-             'geometry': Point(1000, 2500),
-             },
-            {'id': 2,
-             'name': 'stair bottom',
-             'geometry': Point(650, 4300),
-             },
-            {'id': 3,
-             'name': 'Laundry room',
-             'geometry': Point(575, 5400),
-             },
-        ],
-        2: [
-            {'id': 1,
-             'name': 'key loose board',
-             'geometry': Point(1439, 3603),
-             },
-            {'id': 2,
-             'name': 'step 2',
-             'geometry': Point(500, 1793),
-             },
-            {'id': 3,
-             'name': 'step 3 optional',
-             'geometry': Point(1213, 2109),
-             },
-            # {'id': 4,
-            #  'name': 'step 4',
-            #  'geometry': Point(744, 1829),
-            #  },
-            # {'id': 5,
-            # 'name': 'step 5',
-            # 'geometry': Point(674, 962),
-            # },
-
-        ],
-        3: [
-            {'id': 1,
-             'name': 'step 1',
-             'geometry': Point(1150, 407),
-             },
-            {'id': 2,
-             'name': 'step 2',
-             'geometry': Point(3267, 1735),
-             },
-        ]
 
     }
     initiators = {
@@ -173,7 +99,7 @@ class GhostHunter(object):
             'room': 2,
         },
         20625: {
-            'name': 'Lab',
+            'name': 'Lab. Anchor for M Spirit Sign',
             'room': 3,
         },
         33977: {
@@ -189,32 +115,34 @@ class GhostHunter(object):
     # These are ids of anchors serving as beacons for detection
     # DB92 = 56210
     detectable_anchors = {
+        56210: {
+            'name': 'DB92. Anchor for ticket'
+        },
+        20625: {
+            'name': 'Lab. Anchor for M Spirit Sign',
+        },
+
         33157: {
             'name': 'Porters mess door ID 8185',
             'initiator': 0,
+        },
+        36657: {
+            'name': '8F31 downstairs above door'
+        },
+        7444: {
+            'name': '1D14 piano'
         },
         49591: {
             'name': 'Members bar above cable port',
             'room': 2,
         },
         56210: {
-            'name': 'GMeter Test'
+            'name': 'DB92'
         },
-        20625: {
-            'name': 'GMeter Test 1 REAL nook'
-        },
-        # 51744: {
-        #     'name': 'CA20'
+        # 20625: {
+        #     'name': 'GMeter Test 1 REAL nook'
         # },
-        36657: {
-            'name': '8F31 downstairs above door'
-        },
-        # 49289: {
-        #     'name':'CO89'
-        # }
-        7444: {
-            'name': '1D14 piano'
-        }
+
     }
 
     # Current level - in scratch this will be the room we're in
